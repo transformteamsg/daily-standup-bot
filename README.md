@@ -45,7 +45,11 @@ src/
 
 ### 1. Create Slack App
 
-Go to [api.slack.com/apps](https://api.slack.com/apps), create a new app from `slack-app-manifest.yaml`, enable Socket Mode, and install to your workspace.
+1. Go to [api.slack.com/apps](https://api.slack.com/apps), create a new app from `slack-app-manifest.yaml`, enable Socket Mode, and install to your workspace.
+2. Create SLACK_BOT_TOKEN via `OAuth & Permissions` -> `OAuth Tokens`
+3. Create SLACK_APP_TOKEN via `Basic Information` -> `App-Level Tokens`, with the scope `connections:write`, `authorizations:read`
+4. Note down `Signing Secret` for `SLACK_SIGNING_SECRET` as well
+
 
 ### 2. Configure Environment
 
