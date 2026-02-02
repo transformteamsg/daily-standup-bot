@@ -10,7 +10,7 @@ features:
     - command: /tfx-standup
       description: Manage standups
       usage_hint: "[create|list|show|schedule|help] ..."
-      should_escape: false
+      should_escape: true
 
 oauth_config:
   scopes:
