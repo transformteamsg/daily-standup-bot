@@ -1,0 +1,39 @@
+name: "No duplicate DM when already answered"
+description: "Cron fires but member already has a session today, no duplicate DM"
+
+setup:
+  config:
+    name: standup
+    channel: "#standup"
+    schedule:
+      hour: 9
+      minute: 0
+      days: [1, 2, 3, 4, 5]
+      timezone: UTC
+    timeout_minutes: 60
+    questions:
+      - "What did you do?"
+  members:
+    - id: "U001"
+      display_name: "Alice"
+
+steps:
+  - action: trigger_cron
+    clock: "2025-01-06T09:00:00Z"
+
+  - action: assert_dm_sent
+    to: "U001"
+    contains: "What did you do?"
+
+  - action: user_replies
+    from: "U001"
+    text: "Built features"
+
+  - action: clear_messages
+
+  # Trigger again at 09:01 same day — should NOT send another DM
+  - action: trigger_cron
+    clock: "2025-01-06T09:01:00Z"
+
+  - action: assert_no_dm
+    to: "U001"

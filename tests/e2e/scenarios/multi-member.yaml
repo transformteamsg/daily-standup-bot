@@ -1,0 +1,61 @@
+name: "Multiple members answer independently"
+description: "Two members each complete standup, each gets a channel post"
+
+setup:
+  config:
+    name: daily
+    channel: "#daily"
+    schedule:
+      hour: 9
+      minute: 0
+      days: [1, 2, 3, 4, 5]
+      timezone: UTC
+    timeout_minutes: 60
+    questions:
+      - "What did you do?"
+      - "What will you do?"
+  members:
+    - id: "U001"
+      display_name: "Alice"
+    - id: "U002"
+      display_name: "Bob"
+
+steps:
+  - action: trigger_cron
+    clock: "2025-01-06T09:00:00Z"
+
+  - action: assert_dm_sent
+    to: "U001"
+    contains: "What did you do?"
+
+  - action: assert_dm_sent
+    to: "U002"
+    contains: "What did you do?"
+
+  - action: user_replies
+    from: "U001"
+    text: "Worked on feature A"
+
+  - action: user_replies
+    from: "U001"
+    text: "Continue feature A"
+
+  - action: assert_channel_post
+    channel: "#daily"
+    contains:
+      - "U001"
+      - "Worked on feature A"
+
+  - action: user_replies
+    from: "U002"
+    text: "Fixed bug B"
+
+  - action: user_replies
+    from: "U002"
+    text: "Deploy fix"
+
+  - action: assert_channel_post
+    channel: "#daily"
+    contains:
+      - "U002"
+      - "Fixed bug B"

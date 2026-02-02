@@ -1,0 +1,40 @@
+name: "Member skips standup"
+description: "Member replies 'skip' and is marked as skipped"
+
+setup:
+  config:
+    name: standup
+    channel: "#standup"
+    schedule:
+      hour: 9
+      minute: 0
+      days: [1, 2, 3, 4, 5]
+      timezone: UTC
+    timeout_minutes: 60
+    questions:
+      - "What did you do?"
+      - "What will you do?"
+  members:
+    - id: "U001"
+      display_name: "Alice"
+
+steps:
+  - action: trigger_cron
+    clock: "2025-01-06T09:00:00Z"
+
+  - action: assert_dm_sent
+    to: "U001"
+    contains: "What did you do?"
+
+  - action: user_replies
+    from: "U001"
+    text: "skip"
+
+  - action: assert_dm_sent
+    to: "U001"
+    contains: "Standup skipped"
+
+  - action: assert_channel_post
+    channel: "#standup"
+    contains:
+      - "skipped"

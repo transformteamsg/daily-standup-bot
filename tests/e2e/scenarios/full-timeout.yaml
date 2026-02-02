@@ -1,0 +1,36 @@
+name: "Full timeout — member never replies"
+description: "Member never replies, times out with no answers"
+
+setup:
+  config:
+    name: standup
+    channel: "#standup"
+    schedule:
+      hour: 9
+      minute: 0
+      days: [1, 2, 3, 4, 5]
+      timezone: UTC
+    timeout_minutes: 30
+    questions:
+      - "What did you do?"
+  members:
+    - id: "U001"
+      display_name: "Alice"
+
+steps:
+  - action: trigger_cron
+    clock: "2025-01-06T09:00:00Z"
+
+  - action: assert_dm_sent
+    to: "U001"
+    contains: "What did you do?"
+
+  - action: advance_clock
+    minutes: 31
+
+  - action: run_timeout_check
+
+  - action: assert_channel_post
+    channel: "#standup"
+    contains:
+      - "did not respond"
