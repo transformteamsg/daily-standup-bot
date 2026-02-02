@@ -9,6 +9,7 @@ import type {
   Clock,
   IdGenerator,
   Logger,
+  UserResolver,
 } from "@/core/ports";
 import type { StandupCommand } from "@/core/config/commands";
 import type { StandupConfig } from "@/core/domain/standup";
@@ -51,6 +52,7 @@ export interface OrchestratorDeps {
   clock: Clock;
   idGen: IdGenerator;
   logger: Logger;
+  userResolver: UserResolver;
 }
 
 export interface Orchestrator {
@@ -65,7 +67,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
   const {
     teamRepo, memberRepo, configRepo, questionRepo,
     configMemberRepo, sessionRepo,
-    messenger, clock, idGen, logger,
+    messenger, clock, idGen, logger, userResolver,
   } = deps;
 
   async function ensureTeam(slackTeamId: string) {
@@ -126,7 +128,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
 
         case "list": {
           const configs = await configRepo.findAll(team.id);
-          if (configs.length === 0) return "No standups configured. Use `/standup create` to get started.";
+          if (configs.length === 0) return "No standups configured. Use `/tfx-standup create` to get started.";
           return configs
             .map((c) => `• *${c.name}* — ${c.active ? "Active" : "Inactive"} — <#${c.channelId}>`)
             .join("\n");
@@ -190,12 +192,35 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
           const config = await configRepo.findByName(team.id, command.name);
           if (!config) return `Standup "${command.name}" not found.`;
           const added: string[] = [];
+          const unresolved: string[] = [];
           for (const userId of command.userIds) {
-            const member = await ensureMember(team.id, userId);
-            await configMemberRepo.addMember(config.id, member.id);
-            added.push(member.displayName);
+            if (/^[UW][A-Z0-9]+$/.test(userId)) {
+              const member = await ensureMember(team.id, userId);
+              await configMemberRepo.addMember(config.id, member.id);
+              added.push(member.displayName);
+            } else {
+              const resolved = await userResolver.lookupByEmail(userId);
+              if (!resolved) {
+                unresolved.push(userId);
+                continue;
+              }
+              let member = await ensureMember(team.id, resolved.slackUserId);
+              if (member.displayName === member.slackUserId) {
+                member = { ...member, displayName: resolved.displayName };
+                await memberRepo.upsert(member);
+              }
+              await configMemberRepo.addMember(config.id, member.id);
+              added.push(member.displayName);
+            }
           }
-          return `Added ${added.length} member(s) to "${command.name}".`;
+          const lines: string[] = [];
+          if (added.length > 0) {
+            lines.push(`Added ${added.length} member(s) to "${command.name}": ${added.join(", ")}`);
+          }
+          if (unresolved.length > 0) {
+            lines.push(`Could not resolve: ${unresolved.join(", ")}. Please use a valid Slack mention or email.`);
+          }
+          return lines.join("\n") || `No members added to "${command.name}".`;
         }
 
         case "remove-members": {
@@ -246,7 +271,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
         }
 
         case "help":
-          return "Use /standup help for usage information.";
+          return "Use /tfx-standup help for usage information.";
       }
     },
 

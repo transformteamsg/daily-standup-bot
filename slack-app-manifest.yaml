@@ -1,13 +1,13 @@
 display_information:
-  name: Standup Bot
+  name: TFX Standup Bot
   description: Async standup collection via DMs with channel summaries
 
 features:
   bot_user:
-    display_name: Standup Bot
+    display_name: STFX tandup Bot
     always_online: true
   slash_commands:
-    - command: /standup
+    - command: /tfx-standup
       description: Manage standups
       usage_hint: "[create|list|show|schedule|help] ..."
       should_escape: false

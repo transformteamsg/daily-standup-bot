@@ -8,7 +8,7 @@ import { createConfigMemberRepository } from "@/shell/db/repositories/config-mem
 import { createSessionRepository } from "@/shell/db/repositories/session-repository";
 import { createOrchestrator } from "@/shell/orchestrator";
 import type { Orchestrator } from "@/shell/orchestrator";
-import type { Messenger, Clock, IdGenerator, Logger } from "@/core/ports";
+import type { Messenger, Clock, IdGenerator, Logger, UserResolver } from "@/core/ports";
 
 export interface SentMessage {
   type: "dm" | "channel";
@@ -90,6 +90,10 @@ export function createTestHarness(clockStart?: Date): TestHarness {
   const idGen = createTestIdGenerator();
   const logger = createTestLogger();
 
+  const userResolver: UserResolver = {
+    async lookupByEmail() { return null; },
+  };
+
   const orchestrator = createOrchestrator({
     teamRepo: createTeamRepository(db),
     memberRepo: createMemberRepository(db),
@@ -101,6 +105,7 @@ export function createTestHarness(clockStart?: Date): TestHarness {
     clock,
     idGen,
     logger,
+    userResolver,
   });
 
   return { orchestrator, messenger, clock };

@@ -68,7 +68,7 @@ export function parseCommand(text: string): ParseResult {
 
 function parseCreate(args: string[]): ParseResult {
   if (args.length < 2) {
-    return { ok: false, error: "Usage: /standup create <name> <#channel>" };
+    return { ok: false, error: "Usage: /tfx-standup create <name> <#channel>" };
   }
   const name = args[0]!;
   const channelRaw = args[1]!;
@@ -88,7 +88,7 @@ function parseSingleName(
   type: "show" | "activate" | "deactivate" | "delete"
 ): ParseResult {
   if (args.length < 1) {
-    return { ok: false, error: `Usage: /standup ${type} <name>` };
+    return { ok: false, error: `Usage: /tfx-standup ${type} <name>` };
   }
   return { ok: true, command: { type, name: args[0]! } };
 }
@@ -98,7 +98,7 @@ function parseSchedule(args: string[]): ParseResult {
     return {
       ok: false,
       error:
-        "Usage: /standup schedule <name> <HH:MM> <days> <timezone>\ndays: mon,tue,wed,thu,fri or weekdays or everyday",
+        "Usage: /tfx-standup schedule <name> <HH:MM> <days> <timezone>\ndays: mon,tue,wed,thu,fri or weekdays or everyday",
     };
   }
   return {
@@ -117,7 +117,7 @@ function parseAddQuestion(args: string[], fullText: string): ParseResult {
   if (args.length < 2) {
     return {
       ok: false,
-      error: "Usage: /standup add-question <name> <question text>",
+      error: "Usage: /tfx-standup add-question <name> <question text>",
     };
   }
   const name = args[0]!;
@@ -132,7 +132,7 @@ function parseRemoveQuestion(args: string[]): ParseResult {
   if (args.length < 2) {
     return {
       ok: false,
-      error: "Usage: /standup remove-question <name> <question-number>",
+      error: "Usage: /tfx-standup remove-question <name> <question-number>",
     };
   }
   const num = parseInt(args[1]!, 10);
@@ -152,21 +152,21 @@ function parseMembers(
   if (args.length < 2) {
     return {
       ok: false,
-      error: `Usage: /standup ${type} <name> @user1 @user2 ...`,
+      error: `Usage: /tfx-standup ${type} <name> @user1 @user2 ...`,
     };
   }
   const name = args[0]!;
   // Slack formats user mentions as <@U12345> or <@U12345|name>
   const userIds = args.slice(1).map((arg) => {
     const match = arg.match(/^<@([A-Z0-9]+)(?:\|[^>]*)?>$/);
-    return match ? match[1]! : arg;
+    return match ? match[1]! : arg.replace(/^@/, "");
   });
   return { ok: true, command: { type, name, userIds } };
 }
 
 function parseTimeout(args: string[]): ParseResult {
   if (args.length < 2) {
-    return { ok: false, error: "Usage: /standup timeout <name> <minutes>" };
+    return { ok: false, error: "Usage: /tfx-standup timeout <name> <minutes>" };
   }
   const minutes = parseInt(args[1]!, 10);
   if (isNaN(minutes)) {

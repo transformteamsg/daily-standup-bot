@@ -4,7 +4,7 @@ import { parseCommand } from "@/core/config/commands";
 import { formatHelpMessage } from "@/core/standup/formatting";
 
 export function registerCommandListener(app: App, orchestrator: Orchestrator) {
-  app.command("/standup", async ({ command, ack, respond }) => {
+  app.command("/tfx-standup", async ({ command, ack, respond }) => {
     await ack();
 
     const parsed = parseCommand(command.text);

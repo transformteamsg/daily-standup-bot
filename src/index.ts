@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import { envSchema } from "@/schemas/env";
 import { createSlackApp } from "@/shell/slack/app";
 import { createSlackMessenger } from "@/shell/slack/messenger";
+import { createSlackUserResolver } from "@/shell/slack/user-resolver";
 import { createDb } from "@/shell/db/client";
 import { runMigrations } from "@/shell/db/migrate";
 import { createTeamRepository } from "@/shell/db/repositories/team-repository";
@@ -23,6 +24,7 @@ runMigrations(db);
 
 const app = createSlackApp(env);
 const messenger = createSlackMessenger(app);
+const userResolver = createSlackUserResolver(app);
 
 const clock: Clock = {
   now: () => new Date(),
@@ -49,6 +51,7 @@ const orchestrator = createOrchestrator({
   clock,
   idGen,
   logger,
+  userResolver,
 });
 
 registerCommandListener(app, orchestrator);

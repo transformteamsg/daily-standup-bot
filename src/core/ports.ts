@@ -99,3 +99,7 @@ export interface Logger {
   warn(message: string, meta?: Record<string, unknown>): void;
   error(message: string, meta?: Record<string, unknown>): void;
 }
+
+export interface UserResolver {
+  lookupByEmail(email: string): Promise<{ slackUserId: string; displayName: string } | null>;
+}

@@ -184,9 +184,9 @@ describe("formatStandupConfigSummary", () => {
 describe("formatHelpMessage", () => {
   it("includes all commands", () => {
     const result = formatHelpMessage();
-    expect(result).toContain("/standup create");
-    expect(result).toContain("/standup list");
-    expect(result).toContain("/standup schedule");
-    expect(result).toContain("/standup help");
+    expect(result).toContain("tfx-standup create");
+    expect(result).toContain("tfx-standup list");
+    expect(result).toContain("tfx-standup schedule");
+    expect(result).toContain("tfx-standup help");
   });
 });

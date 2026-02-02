@@ -12,7 +12,7 @@ export const slackDMEventSchema = z.object({
 export type SlackDMEvent = z.infer<typeof slackDMEventSchema>;
 
 export const slackCommandPayloadSchema = z.object({
-  command: z.literal("/standup"),
+  command: z.literal("/tfx-standup"),
   text: z.string(),
   user_id: z.string().min(1),
   team_id: z.string().min(1),

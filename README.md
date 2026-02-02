@@ -4,7 +4,7 @@ Slack bot that collects async standups via DMs and posts summaries to channels.
 
 ## Features
 
-- `/standup` slash command for managing standups
+- `/tfx-standup` slash command for managing standups
 - Async DM-based question/answer flow
 - Automatic channel summaries on completion
 - Configurable schedules, timeouts, and questions
@@ -49,7 +49,7 @@ src/
 2. Create SLACK_BOT_TOKEN via `OAuth & Permissions` -> `OAuth Tokens`
 3. Create SLACK_APP_TOKEN via `Basic Information` -> `App-Level Tokens`, with the scope `connections:write`, `authorizations:read`
 4. Note down `Signing Secret` for `SLACK_SIGNING_SECRET` as well
-
+5. Ensure `Allow users to send Slash commands and messages from the messages tab` is checked in `App Home`
 
 ### 2. Configure Environment
 
@@ -75,19 +75,19 @@ docker compose up --build
 
 | Command | Description |
 |---|---|
-| `/standup create <name> <#channel>` | Create a new standup |
-| `/standup list` | List all standups |
-| `/standup show <name>` | Show standup details |
-| `/standup schedule <name> <HH:MM> <days> <tz>` | Set schedule |
-| `/standup add-question <name> <text>` | Add a question |
-| `/standup remove-question <name> <#>` | Remove question by number |
-| `/standup add-members <name> @users` | Add members |
-| `/standup remove-members <name> @users` | Remove members |
-| `/standup timeout <name> <minutes>` | Set timeout (5-480) |
-| `/standup activate <name>` | Activate |
-| `/standup deactivate <name>` | Deactivate |
-| `/standup delete <name>` | Delete |
-| `/standup help` | Show help |
+| `/tfx-standup create <name> <#channel>` | Create a new standup |
+| `/tfx-standup list` | List all standups |
+| `/tfx-standup show <name>` | Show standup details |
+| `/tfx-standup schedule <name> <HH:MM> <days> <tz>` | Set schedule |
+| `/tfx-standup add-question <name> <text>` | Add a question |
+| `/tfx-standup remove-question <name> <#>` | Remove question by number |
+| `/tfx-standup add-members <name> @users` | Add members |
+| `/tfx-standup remove-members <name> @users` | Remove members |
+| `/tfx-standup timeout <name> <minutes>` | Set timeout (5-480) |
+| `/tfx-standup activate <name>` | Activate |
+| `/tfx-standup deactivate <name>` | Deactivate |
+| `/tfx-standup delete <name>` | Delete |
+| `/tfx-standup help` | Show help |
 
 **days format:** `mon,tue,wed,thu,fri` or `weekdays` or `everyday`
 
