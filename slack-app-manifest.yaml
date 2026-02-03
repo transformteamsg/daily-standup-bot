@@ -16,13 +16,13 @@ oauth_config:
   scopes:
     bot:
       - chat:write
-      - chat:write.public
       - commands
       - im:write
       - im:read
       - im:history
       - users:read
       - channels:read
+      - groups:read
 
 settings:
   event_subscriptions:

@@ -1,0 +1,35 @@
+name: "Delete config with active sessions"
+description: "Deleting a config that has active sessions should not cause FK constraint errors"
+
+setup:
+  config:
+    name: daily
+    channel: "#standup"
+    schedule:
+      hour: 9
+      minute: 0
+      days: [1, 2, 3, 4, 5]
+      timezone: UTC
+    timeout_minutes: 60
+    questions:
+      - "What did you do yesterday?"
+      - "What will you do today?"
+  members:
+    - id: "U001"
+      display_name: "Alice"
+
+steps:
+  # Trigger cron to create sessions
+  - action: trigger_cron
+    clock: "2025-01-06T09:00:00Z"
+
+  - action: assert_dm_sent
+    to: "U001"
+    contains: "What did you do yesterday?"
+
+  # Delete the config while sessions exist
+  - action: handle_command
+    command:
+      type: delete
+      name: daily
+    assert_contains: "deleted"

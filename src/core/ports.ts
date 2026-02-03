@@ -70,6 +70,7 @@ export interface SessionRepository {
   ): Promise<readonly StandupSession[]>;
   save(session: StandupSession): Promise<void>;
   update(session: StandupSession): Promise<void>;
+  deleteByConfigId(configId: ConfigId): Promise<void>;
 }
 
 export interface ResponseRepository {

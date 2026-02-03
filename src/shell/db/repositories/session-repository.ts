@@ -136,6 +136,10 @@ export function createSessionRepository(db: Db): SessionRepository {
       }
     },
 
+    async deleteByConfigId(configId: ConfigId): Promise<void> {
+      await db.delete(standupSessions).where(eq(standupSessions.configId, configId));
+    },
+
     async update(session: StandupSession): Promise<void> {
       await db
         .update(standupSessions)

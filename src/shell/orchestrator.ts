@@ -268,6 +268,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
         case "delete": {
           const config = await configRepo.findByName(team.id, command.name);
           if (!config) return `Standup "${command.name}" not found.`;
+          await sessionRepo.deleteByConfigId(config.id);
           await questionRepo.deleteByConfigId(config.id);
           await configRepo.delete(config.id);
           return `"${command.name}" deleted.`;
@@ -390,26 +391,35 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
       const needsStandup = getMembersNeedingStandup(allMembers, existingMemberIds);
 
       for (const m of needsStandup) {
-        const now = clock.toISOString();
-        const session = createSession(
-          SessionId(idGen.generate()),
-          config.id,
-          m.id,
-          today,
-          now
-        );
-        await sessionRepo.save(session);
+        try {
+          const now = clock.toISOString();
+          const session = createSession(
+            SessionId(idGen.generate()),
+            config.id,
+            m.id,
+            today,
+            now
+          );
+          await sessionRepo.save(session);
 
-        const deliveredResult = markDelivered(session, now);
-        if (!deliveredResult.ok) continue;
-        await sessionRepo.update(deliveredResult.session);
+          const deliveredResult = markDelivered(session, now);
+          if (!deliveredResult.ok) continue;
+          await sessionRepo.update(deliveredResult.session);
 
-        const firstQ = questions[0]!;
-        await messenger.sendDM(
-          m.slackUserId,
-          formatFirstQuestionDM(config.name, firstQ, questions.length)
-        );
-        logger.info("Sent standup DM", { member: m.slackUserId, config: config.name });
+          const firstQ = questions[0]!;
+          await messenger.sendDM(
+            m.slackUserId,
+            formatFirstQuestionDM(config.name, firstQ, questions.length)
+          );
+          logger.info("Sent standup DM", { member: m.slackUserId, config: config.name });
+        } catch (err) {
+          logger.error("Failed to trigger standup for member", {
+            member: m.slackUserId,
+            memberId: m.id,
+            config: config.name,
+            error: String(err),
+          });
+        }
       }
     },
 
@@ -418,41 +428,50 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
       const expiredCandidates = await sessionRepo.findExpiredSessions(clock.toISOString());
 
       for (const session of expiredCandidates) {
-        const config = await configRepo.findById(session.configId);
-        if (!config) continue;
-
-        if (
-          session.status !== "questions_delivered" &&
-          session.status !== "in_progress"
-        ) continue;
-
-        if (!isSessionExpired(session.deliveredAt, config.timeoutMinutes, now)) continue;
-
-        const result = timeoutSession(session, clock.toISOString());
-        if (!result.ok) continue;
-        await sessionRepo.update(result.session);
-
-        const m = await memberRepo.findById(session.memberId);
-        if (!m) continue;
-
-        const questions = sortQuestionsByOrder(
-          await questionRepo.findByConfigId(session.configId)
-        );
-
         try {
-          await messenger.postToChannel(
-            config.channelId,
-            formatTimedOutSummary(m.displayName, result.session, questions)
+          const config = await configRepo.findById(session.configId);
+          if (!config) continue;
+
+          if (
+            session.status !== "questions_delivered" &&
+            session.status !== "in_progress"
+          ) continue;
+
+          if (!isSessionExpired(session.deliveredAt, config.timeoutMinutes, now)) continue;
+
+          const result = timeoutSession(session, clock.toISOString());
+          if (!result.ok) continue;
+          await sessionRepo.update(result.session);
+
+          const m = await memberRepo.findById(session.memberId);
+          if (!m) continue;
+
+          const questions = sortQuestionsByOrder(
+            await questionRepo.findByConfigId(session.configId)
           );
+
+          try {
+            await messenger.postToChannel(
+              config.channelId,
+              formatTimedOutSummary(m.displayName, result.session, questions)
+            );
+          } catch (err) {
+            logger.error("Failed to post timeout summary to channel", {
+              channelId: config.channelId,
+              config: config.name,
+              error: String(err),
+            });
+          }
+          await messenger.sendDM(m.slackUserId, "Your standup has timed out.");
+          logger.info("Session timed out", { session: session.id, member: m.slackUserId });
         } catch (err) {
-          logger.error("Failed to post timeout summary to channel", {
-            channelId: config.channelId,
-            config: config.name,
+          logger.error("Failed to check timeout for session", {
+            sessionId: session.id,
+            configId: session.configId,
+            memberId: session.memberId,
             error: String(err),
           });
         }
-        await messenger.sendDM(m.slackUserId, "Your standup has timed out.");
-        logger.info("Session timed out", { session: session.id, member: m.slackUserId });
       }
     },
 
@@ -461,12 +480,26 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
       const activeConfigs = await configRepo.findAllActive();
 
       for (const config of activeConfigs) {
-        if (config.schedule && shouldTrigger(config.schedule, now)) {
-          await this.triggerStandup(config.id);
+        try {
+          if (config.schedule && shouldTrigger(config.schedule, now)) {
+            await this.triggerStandup(config.id);
+          }
+        } catch (err) {
+          logger.error("Failed to trigger standup in tick", {
+            config: config.name,
+            configId: config.id,
+            error: String(err),
+          });
         }
       }
 
-      await this.checkTimeouts();
+      try {
+        await this.checkTimeouts();
+      } catch (err) {
+        logger.error("Failed to check timeouts in tick", {
+          error: String(err),
+        });
+      }
     },
   };
 }

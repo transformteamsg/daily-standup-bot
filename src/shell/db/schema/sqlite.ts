@@ -53,7 +53,7 @@ export const standupSessions = sqliteTable("standup_sessions", {
   id: text("id").primaryKey(),
   configId: text("config_id")
     .notNull()
-    .references(() => standupConfigs.id),
+    .references(() => standupConfigs.id, { onDelete: "cascade" }),
   memberId: text("member_id")
     .notNull()
     .references(() => members.id),

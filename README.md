@@ -93,7 +93,7 @@ docker compose up --build
 
 ## Channel Access
 
-The bot requires the `chat:write.public` scope (included in the manifest) to post summaries to public channels without being a member. When creating a standup, the bot validates that it can access the target channel. If the channel is **private**, invite the bot to the channel first with `/invite @TFX Standup Bot`.
+The bot can only post to channels it's a member of. Before creating a standup, invite the bot to the target channel with `/invite @TFX Standup Bot`. This applies to both public and private channels.
 
 If you update the manifest after initial installation, reinstall the app in Slack to pick up the new scopes.
 

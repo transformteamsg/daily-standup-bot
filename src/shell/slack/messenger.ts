@@ -31,9 +31,12 @@ export function createSlackMessenger(app: App): Messenger {
         if (!result.ok || !result.channel) {
           return { ok: false as const, error: "Channel not found or bot cannot access it." };
         }
+        if (!result.channel.is_member) {
+          return { ok: false as const, error: `Bot is not a member of <#${channelId}>. Please invite the bot to the channel first.` };
+        }
         return { ok: true as const };
       } catch {
-        return { ok: false as const, error: `Cannot access channel <#${channelId}>. Make sure the channel exists and is public, or invite the bot first.` };
+        return { ok: false as const, error: `Cannot access channel <#${channelId}>. Please make sure the channel exists and invite the bot to it.` };
       }
     },
   };

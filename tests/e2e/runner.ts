@@ -172,6 +172,25 @@ async function executeStep(harness: TestHarness, step: ScenarioStep, _setup: Sce
       break;
     }
 
+    case "handle_command": {
+      const command = step.command as Record<string, unknown>;
+      const teamId = (step.team_id as string) ?? "T_TEST";
+      const userId = (step.user_id as string) ?? "U_ADMIN";
+      const response = await orchestrator.handleCommand(
+        command as unknown as import("@/core/config/commands").StandupCommand,
+        teamId,
+        userId
+      );
+      if (step.assert_contains) {
+        const needle = step.assert_contains as string;
+        expect(
+          response,
+          `Expected command response to contain "${needle}", got: "${response}"`
+        ).toContain(needle);
+      }
+      break;
+    }
+
     case "clear_messages": {
       messenger.clear();
       break;
