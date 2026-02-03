@@ -91,6 +91,12 @@ docker compose up --build
 
 **days format:** `mon,tue,wed,thu,fri` or `weekdays` or `everyday`
 
+## Channel Access
+
+The bot requires the `chat:write.public` scope (included in the manifest) to post summaries to public channels without being a member. When creating a standup, the bot validates that it can access the target channel. If the channel is **private**, invite the bot to the channel first with `/invite @TFX Standup Bot`.
+
+If you update the manifest after initial installation, reinstall the app in Slack to pick up the new scopes.
+
 ## Message Flow
 
 1. Cron fires at scheduled time

@@ -112,6 +112,9 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
           const existing = await configRepo.findByName(team.id, command.name);
           if (existing) return `A standup named "${command.name}" already exists.`;
 
+          const channelCheck = await messenger.validateChannel(command.channelId);
+          if (!channelCheck.ok) return channelCheck.error;
+
           const config: StandupConfig = {
             id: ConfigId(idGen.generate()),
             teamId: team.id,
@@ -294,10 +297,18 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
         await sessionRepo.update(result.session);
         const config = await configRepo.findById(session.configId);
         if (config) {
-          await messenger.postToChannel(
-            config.channelId,
-            formatSkippedSummary(member.displayName)
-          );
+          try {
+            await messenger.postToChannel(
+              config.channelId,
+              formatSkippedSummary(member.displayName)
+            );
+          } catch (err) {
+            logger.error("Failed to post skip summary to channel", {
+              channelId: config.channelId,
+              config: config.name,
+              error: String(err),
+            });
+          }
         }
         await messenger.sendDM(slackUserId, "Standup skipped.");
         return;
@@ -337,10 +348,18 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
 
       if (answerResult.session.status === "completed") {
         await messenger.sendDM(slackUserId, "Thanks! Your standup is complete.");
-        await messenger.postToChannel(
-          config.channelId,
-          formatCompletedSummary(member.displayName, answerResult.session.responses)
-        );
+        try {
+          await messenger.postToChannel(
+            config.channelId,
+            formatCompletedSummary(member.displayName, answerResult.session.responses)
+          );
+        } catch (err) {
+          logger.error("Failed to post completed summary to channel", {
+            channelId: config.channelId,
+            config: config.name,
+            error: String(err),
+          });
+        }
       } else if (answerResult.session.status === "in_progress") {
         const nextQ = getCurrentQuestion(answerResult.session, questions);
         if (nextQ) {
@@ -420,10 +439,18 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
           await questionRepo.findByConfigId(session.configId)
         );
 
-        await messenger.postToChannel(
-          config.channelId,
-          formatTimedOutSummary(m.displayName, result.session, questions)
-        );
+        try {
+          await messenger.postToChannel(
+            config.channelId,
+            formatTimedOutSummary(m.displayName, result.session, questions)
+          );
+        } catch (err) {
+          logger.error("Failed to post timeout summary to channel", {
+            channelId: config.channelId,
+            config: config.name,
+            error: String(err),
+          });
+        }
         await messenger.sendDM(m.slackUserId, "Your standup has timed out.");
         logger.info("Session timed out", { session: session.id, member: m.slackUserId });
       }

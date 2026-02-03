@@ -24,5 +24,17 @@ export function createSlackMessenger(app: App): Messenger {
         text,
       });
     },
+
+    async validateChannel(channelId: string) {
+      try {
+        const result = await app.client.conversations.info({ channel: channelId });
+        if (!result.ok || !result.channel) {
+          return { ok: false as const, error: "Channel not found or bot cannot access it." };
+        }
+        return { ok: true as const };
+      } catch {
+        return { ok: false as const, error: `Cannot access channel <#${channelId}>. Make sure the channel exists and is public, or invite the bot first.` };
+      }
+    },
   };
 }

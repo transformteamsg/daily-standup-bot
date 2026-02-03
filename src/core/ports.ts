@@ -82,6 +82,7 @@ export interface ResponseRepository {
 export interface Messenger {
   sendDM(slackUserId: string, text: string): Promise<void>;
   postToChannel(channelId: string, text: string): Promise<void>;
+  validateChannel(channelId: string): Promise<{ ok: true } | { ok: false; error: string }>;
 }
 
 export interface Clock {

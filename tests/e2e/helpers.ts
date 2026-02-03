@@ -31,6 +31,9 @@ export function createFakeMessenger(): FakeMessenger {
     async postToChannel(channelId: string, text: string) {
       sent.push({ type: "channel", to: channelId, text });
     },
+    async validateChannel(_channelId: string) {
+      return { ok: true as const };
+    },
     clear() {
       sent.length = 0;
     },
