@@ -1,7 +1,7 @@
 import type { App } from "@slack/bolt";
-import type { Messenger } from "@/core/ports";
+import type { Logger, Messenger } from "@/core/ports";
 
-export function createSlackMessenger(app: App): Messenger {
+export function createSlackMessenger(app: App, logger: Logger): Messenger {
   return {
     async sendDM(slackUserId: string, text: string): Promise<void> {
       // Open a DM channel, then send the message
@@ -35,8 +35,10 @@ export function createSlackMessenger(app: App): Messenger {
           return { ok: false as const, error: `Bot is not a member of <#${channelId}>. Please invite the bot to the channel first.` };
         }
         return { ok: true as const };
-      } catch {
-        return { ok: false as const, error: `Cannot access channel <#${channelId}>. Please make sure the channel exists and invite the bot to it.` };
+      } catch (err: unknown) {
+        const slackCode = (err as any)?.data?.error ?? "unknown";
+        logger.error("validateChannel failed", { channelId, slackCode, error: String(err) });
+        return { ok: false as const, error: `Cannot access channel <#${channelId}>: ${slackCode}. Please make sure the channel exists and invite the bot to it.` };
       }
     },
   };

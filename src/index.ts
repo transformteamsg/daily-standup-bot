@@ -22,8 +22,14 @@ const env = envSchema.parse(process.env);
 const db = createDb(env.DATABASE_URL);
 runMigrations(db);
 
+const logger: Logger = {
+  info: (msg, meta) => console.log(`[INFO] ${msg}`, meta ?? ""),
+  warn: (msg, meta) => console.warn(`[WARN] ${msg}`, meta ?? ""),
+  error: (msg, meta) => console.error(`[ERROR] ${msg}`, meta ?? ""),
+};
+
 const app = createSlackApp(env);
-const messenger = createSlackMessenger(app);
+const messenger = createSlackMessenger(app, logger);
 const userResolver = createSlackUserResolver(app);
 
 const clock: Clock = {
@@ -33,12 +39,6 @@ const clock: Clock = {
 };
 
 const idGen: IdGenerator = { generate: () => uuidv4() };
-
-const logger: Logger = {
-  info: (msg, meta) => console.log(`[INFO] ${msg}`, meta ?? ""),
-  warn: (msg, meta) => console.warn(`[WARN] ${msg}`, meta ?? ""),
-  error: (msg, meta) => console.error(`[ERROR] ${msg}`, meta ?? ""),
-};
 
 const orchestrator = createOrchestrator({
   teamRepo: createTeamRepository(db),
