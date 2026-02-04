@@ -6,11 +6,13 @@ Slack bot that collects async standups via DMs and posts summaries to channels.
 
 - `/tfx-standup` slash command for managing standups
 - Async DM-based question/answer flow
-- Automatic channel summaries on completion
+- Automatic channel summaries grouped in daily threads
 - Configurable schedules, timeouts, and questions
 - Skip support
 - Timeout handling with partial summaries
 - Multiple standups per workspace
+- Superadmin/admin role system with command access control
+- Aggregated report subscriptions (get a DM when watched members finish)
 
 ## Tech Stack
 
@@ -55,8 +57,10 @@ src/
 
 ```bash
 cp .env.example .env
-# Fill in SLACK_BOT_TOKEN, SLACK_APP_TOKEN, SLACK_SIGNING_SECRET
+# Fill in SLACK_BOT_TOKEN, SLACK_APP_TOKEN, SLACK_SIGNING_SECRET, SUPERADMIN_USER_ID
 ```
+
+`SUPERADMIN_USER_ID` is the Slack user ID of the bot superadmin. This user can manage admins and has full command access. Find your Slack user ID in your Slack profile.
 
 ### 3. Install & Run
 
@@ -89,7 +93,26 @@ docker compose up --build
 | `/tfx-standup delete <name>` | Delete |
 | `/tfx-standup help` | Show help |
 
+**Admin commands (superadmin only):**
+
+| Command | Description |
+|---|---|
+| `/tfx-standup add-admin @users` | Add admins |
+| `/tfx-standup remove-admin @users` | Remove admins |
+| `/tfx-standup list-admins` | List all admins |
+
+**Report subscriptions:**
+
+| Command | Description |
+|---|---|
+| `/tfx-standup subscribe <name> @users` | Get a DM when these members finish |
+| `/tfx-standup unsubscribe <name> @users` | Stop getting DMs for these members |
+
 **days format:** `mon,tue,wed,thu,fri` or `weekdays` or `everyday`
+
+## Access Control
+
+Most commands require admin or superadmin access. The `SUPERADMIN_USER_ID` env var designates the superadmin, who can then grant admin access to other users via `/tfx-standup add-admin @user`. The only command available to all users is `/tfx-standup help`.
 
 ## Channel Access
 
@@ -102,8 +125,11 @@ If you update the manifest after initial installation, reinstall the app in Slac
 1. Cron fires at scheduled time
 2. Bot creates sessions and sends first question via DM
 3. User replies to each question in DM
-4. On last answer, bot posts summary to the configured channel
-5. If user doesn't reply within timeout, partial summary is posted
+4. On last answer, bot posts summary as a reply in the daily thread
+5. If user doesn't reply within timeout, partial summary is posted to the thread
+6. If an admin has subscribed to members, they receive an aggregated DM once all watched members finish
+
+Each day's standup summaries are grouped under a daily thread in the channel.
 
 Users can reply `skip` to skip the standup.
 
@@ -150,3 +176,6 @@ SQLite with Drizzle ORM. Tables:
 - `config_members` — Member-config associations
 - `standup_sessions` — Per-member per-day sessions
 - `standup_responses` — Individual answers
+- `admins` — Admin role assignments per team
+- `daily_threads` — Daily thread timestamps per config per day
+- `report_subscriptions` — Aggregated report subscriptions
