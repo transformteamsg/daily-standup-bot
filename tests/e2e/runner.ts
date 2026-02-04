@@ -211,7 +211,7 @@ export function loadAndRunScenarios(scenariosDir: string) {
     describe(scenario.name, () => {
       it("passes all steps", async () => {
         const clockStart = findFirstClock(scenario.steps);
-        const harness = createTestHarness(
+        const harness = await createTestHarness(
           clockStart ? new Date(clockStart) : undefined
         );
 

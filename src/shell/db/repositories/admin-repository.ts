@@ -1,6 +1,6 @@
 import { eq, and } from "drizzle-orm";
 import type { Db } from "@/shell/db/client";
-import { admins } from "@/shell/db/schema/sqlite";
+import { admins } from "@/shell/db/schema/postgres";
 import type { AdminRepository } from "@/core/ports";
 import type { Admin, TeamId } from "@/core/domain/standup";
 import { AdminId, TeamId as mkTeamId } from "@/core/domain/standup";
@@ -8,11 +8,10 @@ import { AdminId, TeamId as mkTeamId } from "@/core/domain/standup";
 export function createAdminRepository(db: Db): AdminRepository {
   return {
     async findByTeamAndSlackUserId(teamId: TeamId, slackUserId: string): Promise<Admin | null> {
-      const row = await db
+      const [row] = await db
         .select()
         .from(admins)
-        .where(and(eq(admins.teamId, teamId), eq(admins.slackUserId, slackUserId)))
-        .get();
+        .where(and(eq(admins.teamId, teamId), eq(admins.slackUserId, slackUserId)));
       return row ? toAdmin(row) : null;
     },
 
@@ -20,8 +19,7 @@ export function createAdminRepository(db: Db): AdminRepository {
       const rows = await db
         .select()
         .from(admins)
-        .where(eq(admins.teamId, teamId))
-        .all();
+        .where(eq(admins.teamId, teamId));
       return rows.map(toAdmin);
     },
 

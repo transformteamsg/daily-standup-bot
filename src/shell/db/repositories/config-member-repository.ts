@@ -1,6 +1,6 @@
 import { eq, and } from "drizzle-orm";
 import type { Db } from "@/shell/db/client";
-import { configMembers, members, standupConfigs } from "@/shell/db/schema/sqlite";
+import { configMembers, members, standupConfigs } from "@/shell/db/schema/postgres";
 import type { ConfigMemberRepository } from "@/core/ports";
 import type { Member, StandupConfig, ConfigId, MemberId, Schedule } from "@/core/domain/standup";
 import {
@@ -16,8 +16,7 @@ export function createConfigMemberRepository(db: Db): ConfigMemberRepository {
         .select({ member: members })
         .from(configMembers)
         .innerJoin(members, eq(configMembers.memberId, members.id))
-        .where(eq(configMembers.configId, configId))
-        .all();
+        .where(eq(configMembers.configId, configId));
       return rows.map((r) => ({
         id: mkMemberId(r.member.id),
         teamId: mkTeamId(r.member.teamId),
@@ -35,8 +34,7 @@ export function createConfigMemberRepository(db: Db): ConfigMemberRepository {
         .select({ config: standupConfigs })
         .from(configMembers)
         .innerJoin(standupConfigs, eq(configMembers.configId, standupConfigs.id))
-        .where(eq(configMembers.memberId, memberId))
-        .all();
+        .where(eq(configMembers.memberId, memberId));
       return rows.map((r) => {
         let schedule: Schedule | null = null;
         if (r.config.scheduleJson) {

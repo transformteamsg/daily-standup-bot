@@ -1,13 +1,13 @@
-import { sqliteTable, text, integer, primaryKey, unique } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer, boolean, primaryKey, unique } from "drizzle-orm/pg-core";
 
-export const teams = sqliteTable("teams", {
+export const teams = pgTable("teams", {
   id: text("id").primaryKey(),
   slackTeamId: text("slack_team_id").notNull().unique(),
   name: text("name").notNull(),
   createdAt: text("created_at").notNull(),
 });
 
-export const members = sqliteTable("members", {
+export const members = pgTable("members", {
   id: text("id").primaryKey(),
   teamId: text("team_id")
     .notNull()
@@ -18,7 +18,7 @@ export const members = sqliteTable("members", {
   createdAt: text("created_at").notNull(),
 });
 
-export const standupConfigs = sqliteTable("standup_configs", {
+export const standupConfigs = pgTable("standup_configs", {
   id: text("id").primaryKey(),
   teamId: text("team_id")
     .notNull()
@@ -27,11 +27,11 @@ export const standupConfigs = sqliteTable("standup_configs", {
   channelId: text("channel_id").notNull(),
   scheduleJson: text("schedule_json"), // JSON string of Schedule
   timeoutMinutes: integer("timeout_minutes").notNull().default(60),
-  active: integer("active", { mode: "boolean" }).notNull().default(false),
+  active: boolean("active").notNull().default(false),
   createdAt: text("created_at").notNull(),
 });
 
-export const standupQuestions = sqliteTable("standup_questions", {
+export const standupQuestions = pgTable("standup_questions", {
   id: text("id").primaryKey(),
   configId: text("config_id")
     .notNull()
@@ -40,7 +40,7 @@ export const standupQuestions = sqliteTable("standup_questions", {
   order: integer("order").notNull(),
 });
 
-export const configMembers = sqliteTable("config_members", {
+export const configMembers = pgTable("config_members", {
   configId: text("config_id")
     .notNull()
     .references(() => standupConfigs.id, { onDelete: "cascade" }),
@@ -49,7 +49,7 @@ export const configMembers = sqliteTable("config_members", {
     .references(() => members.id),
 });
 
-export const standupSessions = sqliteTable("standup_sessions", {
+export const standupSessions = pgTable("standup_sessions", {
   id: text("id").primaryKey(),
   configId: text("config_id")
     .notNull()
@@ -67,7 +67,7 @@ export const standupSessions = sqliteTable("standup_sessions", {
   createdAt: text("created_at").notNull(),
 });
 
-export const standupResponses = sqliteTable("standup_responses", {
+export const standupResponses = pgTable("standup_responses", {
   id: text("id").primaryKey(),
   sessionId: text("session_id")
     .notNull()
@@ -78,7 +78,7 @@ export const standupResponses = sqliteTable("standup_responses", {
   answeredAt: text("answered_at").notNull(),
 });
 
-export const admins = sqliteTable("admins", {
+export const admins = pgTable("admins", {
   id: text("id").primaryKey(),
   teamId: text("team_id")
     .notNull()
@@ -89,7 +89,7 @@ export const admins = sqliteTable("admins", {
   unique().on(table.teamId, table.slackUserId),
 ]);
 
-export const dailyThreads = sqliteTable("daily_threads", {
+export const dailyThreads = pgTable("daily_threads", {
   id: text("id").primaryKey(),
   configId: text("config_id")
     .notNull()
@@ -102,7 +102,7 @@ export const dailyThreads = sqliteTable("daily_threads", {
   unique().on(table.configId, table.date),
 ]);
 
-export const reportSubscriptions = sqliteTable("report_subscriptions", {
+export const reportSubscriptions = pgTable("report_subscriptions", {
   configId: text("config_id")
     .notNull()
     .references(() => standupConfigs.id, { onDelete: "cascade" }),

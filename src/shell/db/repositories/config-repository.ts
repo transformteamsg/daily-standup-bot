@@ -1,6 +1,6 @@
 import { eq, and } from "drizzle-orm";
 import type { Db } from "@/shell/db/client";
-import { standupConfigs } from "@/shell/db/schema/sqlite";
+import { standupConfigs } from "@/shell/db/schema/postgres";
 import type { ConfigRepository } from "@/core/ports";
 import type { StandupConfig, TeamId, ConfigId, Schedule } from "@/core/domain/standup";
 import { ConfigId as mkConfigId, TeamId as mkTeamId } from "@/core/domain/standup";
@@ -8,11 +8,10 @@ import { ConfigId as mkConfigId, TeamId as mkTeamId } from "@/core/domain/standu
 export function createConfigRepository(db: Db): ConfigRepository {
   return {
     async findById(id: ConfigId): Promise<StandupConfig | null> {
-      const row = await db
+      const [row] = await db
         .select()
         .from(standupConfigs)
-        .where(eq(standupConfigs.id, id))
-        .get();
+        .where(eq(standupConfigs.id, id));
       return row ? toConfig(row) : null;
     },
 
@@ -20,13 +19,12 @@ export function createConfigRepository(db: Db): ConfigRepository {
       teamId: TeamId,
       name: string
     ): Promise<StandupConfig | null> {
-      const row = await db
+      const [row] = await db
         .select()
         .from(standupConfigs)
         .where(
           and(eq(standupConfigs.teamId, teamId), eq(standupConfigs.name, name))
-        )
-        .get();
+        );
       return row ? toConfig(row) : null;
     },
 
@@ -36,8 +34,7 @@ export function createConfigRepository(db: Db): ConfigRepository {
         .from(standupConfigs)
         .where(
           and(eq(standupConfigs.teamId, teamId), eq(standupConfigs.active, true))
-        )
-        .all();
+        );
       return rows.map(toConfig);
     },
 
@@ -45,8 +42,7 @@ export function createConfigRepository(db: Db): ConfigRepository {
       const rows = await db
         .select()
         .from(standupConfigs)
-        .where(eq(standupConfigs.active, true))
-        .all();
+        .where(eq(standupConfigs.active, true));
       return rows.map(toConfig);
     },
 
@@ -54,8 +50,7 @@ export function createConfigRepository(db: Db): ConfigRepository {
       const rows = await db
         .select()
         .from(standupConfigs)
-        .where(eq(standupConfigs.teamId, teamId))
-        .all();
+        .where(eq(standupConfigs.teamId, teamId));
       return rows.map(toConfig);
     },
 

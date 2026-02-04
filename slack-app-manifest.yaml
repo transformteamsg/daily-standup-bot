@@ -4,13 +4,14 @@ display_information:
 
 features:
   bot_user:
-    display_name: STFX tandup Bot
+    display_name: TFX Standup Bot
     always_online: true
   slash_commands:
     - command: /tfx-standup
       description: Manage standups
       usage_hint: "[create|list|show|schedule|help] ..."
       should_escape: true
+      url: https://YOUR_API_GATEWAY_URL/slack/events
 
 oauth_config:
   scopes:
@@ -26,10 +27,11 @@ oauth_config:
 
 settings:
   event_subscriptions:
+    request_url: https://YOUR_API_GATEWAY_URL/slack/events
     bot_events:
       - message.im
   interactivity:
     is_enabled: false
   org_deploy_enabled: false
-  socket_mode_enabled: true
+  socket_mode_enabled: false
   token_rotation_enabled: false

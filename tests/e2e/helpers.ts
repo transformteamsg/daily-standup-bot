@@ -1,4 +1,6 @@
-import { createInMemoryDb } from "@/shell/db/client";
+import { PGlite } from "@electric-sql/pglite";
+import { drizzle } from "drizzle-orm/pglite";
+import * as schema from "@/shell/db/schema/postgres";
 import { runMigrations } from "@/shell/db/migrate";
 import { createTeamRepository } from "@/shell/db/repositories/team-repository";
 import { createMemberRepository } from "@/shell/db/repositories/member-repository";
@@ -95,9 +97,14 @@ export interface TestHarness {
   clock: FakeClock;
 }
 
-export function createTestHarness(clockStart?: Date): TestHarness {
-  const db = createInMemoryDb();
-  runMigrations(db);
+function createTestDb() {
+  const client = new PGlite();
+  return drizzle(client, { schema }) as any;
+}
+
+export async function createTestHarness(clockStart?: Date): Promise<TestHarness> {
+  const db = createTestDb();
+  await runMigrations(db);
 
   const messenger = createFakeMessenger();
   const clock = createFakeClock(clockStart);

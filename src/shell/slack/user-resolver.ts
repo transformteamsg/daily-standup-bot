@@ -1,11 +1,11 @@
-import type { App } from "@slack/bolt";
+import type { WebClient } from "@slack/web-api";
 import type { UserResolver } from "@/core/ports";
 
-export function createSlackUserResolver(app: App): UserResolver {
+export function createSlackUserResolver(client: WebClient): UserResolver {
   return {
     async lookupByEmail(email: string) {
       try {
-        const result = await app.client.users.lookupByEmail({ email });
+        const result = await client.users.lookupByEmail({ email });
         const user = result.user;
         if (!user || !user.id) return null;
         const displayName =
@@ -18,7 +18,7 @@ export function createSlackUserResolver(app: App): UserResolver {
 
     async lookupByUserId(userId: string) {
       try {
-        const result = await app.client.users.info({ user: userId });
+        const result = await client.users.info({ user: userId });
         const user = result.user;
         if (!user) return null;
         const displayName =

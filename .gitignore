@@ -7,3 +7,13 @@ dist/
 coverage/
 drizzle/meta/
 .env.*
+
+# CDK
+infra/dist/
+infra/node_modules/
+cdk.out/
+infra/cdk.out/
+
+# LocalStack
+.localstack/
+volume/

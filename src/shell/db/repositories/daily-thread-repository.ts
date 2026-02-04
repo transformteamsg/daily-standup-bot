@@ -1,6 +1,6 @@
 import { eq, and } from "drizzle-orm";
 import type { Db } from "@/shell/db/client";
-import { dailyThreads } from "@/shell/db/schema/sqlite";
+import { dailyThreads } from "@/shell/db/schema/postgres";
 import type { DailyThreadRepository } from "@/core/ports";
 import type { DailyThread, ConfigId } from "@/core/domain/standup";
 import { DailyThreadId, ConfigId as mkConfigId } from "@/core/domain/standup";
@@ -8,11 +8,10 @@ import { DailyThreadId, ConfigId as mkConfigId } from "@/core/domain/standup";
 export function createDailyThreadRepository(db: Db): DailyThreadRepository {
   return {
     async findByConfigAndDate(configId: ConfigId, date: string): Promise<DailyThread | null> {
-      const row = await db
+      const [row] = await db
         .select()
         .from(dailyThreads)
-        .where(and(eq(dailyThreads.configId, configId), eq(dailyThreads.date, date)))
-        .get();
+        .where(and(eq(dailyThreads.configId, configId), eq(dailyThreads.date, date)));
       return row ? toDailyThread(row) : null;
     },
 

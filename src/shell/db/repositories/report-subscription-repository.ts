@@ -1,6 +1,6 @@
 import { eq, and } from "drizzle-orm";
 import type { Db } from "@/shell/db/client";
-import { reportSubscriptions } from "@/shell/db/schema/sqlite";
+import { reportSubscriptions } from "@/shell/db/schema/postgres";
 import type { ReportSubscriptionRepository } from "@/core/ports";
 import type { ReportSubscription, ConfigId, MemberId } from "@/core/domain/standup";
 import { ConfigId as mkConfigId, MemberId as mkMemberId } from "@/core/domain/standup";
@@ -16,8 +16,7 @@ export function createReportSubscriptionRepository(db: Db): ReportSubscriptionRe
             eq(reportSubscriptions.configId, configId),
             eq(reportSubscriptions.subscriberSlackUserId, subscriberSlackUserId)
           )
-        )
-        .all();
+        );
       return rows.map(toSubscription);
     },
 
@@ -25,8 +24,7 @@ export function createReportSubscriptionRepository(db: Db): ReportSubscriptionRe
       const rows = await db
         .select()
         .from(reportSubscriptions)
-        .where(eq(reportSubscriptions.configId, configId))
-        .all();
+        .where(eq(reportSubscriptions.configId, configId));
       return rows.map(toSubscription);
     },
 

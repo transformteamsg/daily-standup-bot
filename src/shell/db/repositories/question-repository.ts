@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import type { Db } from "@/shell/db/client";
-import { standupQuestions } from "@/shell/db/schema/sqlite";
+import { standupQuestions } from "@/shell/db/schema/postgres";
 import type { QuestionRepository } from "@/core/ports";
 import type { StandupQuestion, ConfigId } from "@/core/domain/standup";
 import { QuestionId, ConfigId as mkConfigId } from "@/core/domain/standup";
@@ -13,8 +13,7 @@ export function createQuestionRepository(db: Db): QuestionRepository {
       const rows = await db
         .select()
         .from(standupQuestions)
-        .where(eq(standupQuestions.configId, configId))
-        .all();
+        .where(eq(standupQuestions.configId, configId));
       return rows.map(toQuestion);
     },
 
