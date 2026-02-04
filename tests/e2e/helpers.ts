@@ -95,6 +95,7 @@ export function createTestHarness(clockStart?: Date): TestHarness {
 
   const userResolver: UserResolver = {
     async lookupByEmail() { return null; },
+    async lookupByUserId() { return null; },
   };
 
   const orchestrator = createOrchestrator({

@@ -7,6 +7,7 @@ import {
   formatSkippedSummary,
   formatStandupConfigSummary,
   formatHelpMessage,
+  formatSchedule,
 } from "@/core/standup/formatting";
 import {
   ConfigId,
@@ -39,15 +40,16 @@ describe("formatQuestionDM", () => {
 });
 
 describe("formatFirstQuestionDM", () => {
-  it("includes standup name and question count", () => {
-    const result = formatFirstQuestionDM("Morning Standup", question, 3);
+  it("includes standup name, question count, and channel reference", () => {
+    const result = formatFirstQuestionDM("Morning Standup", question, 3, "C123");
     expect(result).toContain("Morning Standup");
     expect(result).toContain("3 questions");
     expect(result).toContain("What did you do yesterday?");
+    expect(result).toContain("<#C123>");
   });
 
   it("uses singular for 1 question", () => {
-    const result = formatFirstQuestionDM("Daily", question, 1);
+    const result = formatFirstQuestionDM("Daily", question, 1, "C456");
     expect(result).toContain("1 question.");
     expect(result).not.toContain("questions");
   });
@@ -73,8 +75,9 @@ describe("formatCompletedSummary", () => {
         answeredAt: "2025-01-06T09:02:00Z",
       },
     ];
-    const result = formatCompletedSummary("Alice", responses);
+    const result = formatCompletedSummary("Alice", responses, "Daily");
     expect(result).toContain("*Alice*");
+    expect(result).toContain("*Daily*");
     expect(result).toContain("Built features");
     expect(result).toContain("More features");
     expect(result).toContain("*What did you do?*");
@@ -94,9 +97,10 @@ describe("formatTimedOutSummary", () => {
       timedOutAt: "2025-01-06T10:00:01Z",
       responses: [],
     };
-    const result = formatTimedOutSummary("Bob", session, [question]);
+    const result = formatTimedOutSummary("Bob", session, [question], "Daily");
     expect(result).toContain("did not respond");
     expect(result).toContain("Bob");
+    expect(result).toContain("*Daily*");
   });
 
   it("shows partial answers with unanswered questions", () => {
@@ -126,18 +130,20 @@ describe("formatTimedOutSummary", () => {
         },
       ],
     };
-    const result = formatTimedOutSummary("Bob", session, [question, q2]);
+    const result = formatTimedOutSummary("Bob", session, [question, q2], "Daily");
     expect(result).toContain("partially completed");
+    expect(result).toContain("*Daily*");
     expect(result).toContain("Stuff");
     expect(result).toContain("No response (timed out)");
   });
 });
 
 describe("formatSkippedSummary", () => {
-  it("formats skipped message", () => {
-    const result = formatSkippedSummary("Charlie");
+  it("formats skipped message with standup name", () => {
+    const result = formatSkippedSummary("Charlie", "Daily");
     expect(result).toContain("Charlie");
     expect(result).toContain("skipped");
+    expect(result).toContain("*Daily*");
   });
 });
 
@@ -178,6 +184,18 @@ describe("formatStandupConfigSummary", () => {
     expect(result).toContain("Inactive");
     expect(result).toContain("Not set");
     expect(result).toContain("None");
+  });
+});
+
+describe("formatSchedule", () => {
+  it("formats schedule with time, days, and timezone", () => {
+    const result = formatSchedule({ hour: 9, minute: 0, days: [1, 2, 3, 4, 5], timezone: "Asia/Singapore" });
+    expect(result).toBe("09:00 on Mon, Tue, Wed, Thu, Fri (Asia/Singapore)");
+  });
+
+  it("pads single-digit hours and minutes", () => {
+    const result = formatSchedule({ hour: 8, minute: 5, days: [0, 6], timezone: "UTC" });
+    expect(result).toBe("08:05 on Sun, Sat (UTC)");
   });
 });
 

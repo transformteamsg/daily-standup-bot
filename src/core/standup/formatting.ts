@@ -15,31 +15,35 @@ export function formatQuestionDM(
 export function formatFirstQuestionDM(
   standupName: string,
   question: StandupQuestion,
-  totalQuestions: number
+  totalQuestions: number,
+  channelId: string
 ): string {
   return (
-    `It's time for *${standupName}*! I'll ask you ${totalQuestions} question${totalQuestions === 1 ? "" : "s"}. Reply to each one.\n\n` +
+    `It's time for *${standupName}*! I'll ask you ${totalQuestions} question${totalQuestions === 1 ? "" : "s"}. Reply to each one.\n` +
+    `Your responses will be posted to <#${channelId}>.\n\n` +
     formatQuestionDM(question, 1, totalQuestions)
   );
 }
 
 export function formatCompletedSummary(
   displayName: string,
-  responses: readonly StandupResponse[]
+  responses: readonly StandupResponse[],
+  standupName: string
 ): string {
   const lines = responses.map(
     (r) => `*${r.questionText}*\n${r.answer}`
   );
-  return `*${displayName}* has completed their standup:\n\n${lines.join("\n\n")}`;
+  return `*${displayName}* has completed their *${standupName}* standup:\n\n${lines.join("\n\n")}`;
 }
 
 export function formatTimedOutSummary(
   displayName: string,
   session: TimedOutSession,
-  allQuestions: readonly StandupQuestion[]
+  allQuestions: readonly StandupQuestion[],
+  standupName: string
 ): string {
   if (session.responses.length === 0) {
-    return `*${displayName}* did not respond to the standup (timed out).`;
+    return `*${displayName}* did not respond to the *${standupName}* standup (timed out).`;
   }
 
   const answeredLines = session.responses.map(
@@ -52,13 +56,18 @@ export function formatTimedOutSummary(
   );
 
   return (
-    `*${displayName}* partially completed their standup (timed out):\n\n` +
+    `*${displayName}* partially completed their *${standupName}* standup (timed out):\n\n` +
     [...answeredLines, ...unansweredLines].join("\n\n")
   );
 }
 
-export function formatSkippedSummary(displayName: string): string {
-  return `*${displayName}* skipped the standup.`;
+export function formatSkippedSummary(displayName: string, standupName: string): string {
+  return `*${displayName}* skipped the *${standupName}* standup.`;
+}
+
+export function formatSchedule(schedule: { hour: number; minute: number; days: readonly number[]; timezone: string }): string {
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  return `${String(schedule.hour).padStart(2, "0")}:${String(schedule.minute).padStart(2, "0")} on ${schedule.days.map((d) => dayNames[d]).join(", ")} (${schedule.timezone})`;
 }
 
 export function formatStandupConfigSummary(config: {
@@ -70,9 +79,8 @@ export function formatStandupConfigSummary(config: {
   questions: readonly { text: string; order: number }[];
   members: readonly { displayName: string }[];
 }): string {
-  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const scheduleStr = config.schedule
-    ? `${String(config.schedule.hour).padStart(2, "0")}:${String(config.schedule.minute).padStart(2, "0")} on ${config.schedule.days.map((d) => dayNames[d]).join(", ")} (${config.schedule.timezone})`
+    ? formatSchedule(config.schedule)
     : "Not set";
 
   const questionsStr = config.questions.length > 0

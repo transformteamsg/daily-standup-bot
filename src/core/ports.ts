@@ -104,4 +104,5 @@ export interface Logger {
 
 export interface UserResolver {
   lookupByEmail(email: string): Promise<{ slackUserId: string; displayName: string } | null>;
+  lookupByUserId(userId: string): Promise<{ displayName: string } | null>;
 }

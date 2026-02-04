@@ -37,6 +37,7 @@ import {
   formatTimedOutSummary,
   formatSkippedSummary,
   formatStandupConfigSummary,
+  formatSchedule,
 } from "@/core/standup/formatting";
 import { shouldTrigger, isSessionExpired } from "@/core/standup/scheduling";
 import { validateScheduleInput, validateTimeout, validateStandupName } from "@/core/config/validation";
@@ -126,7 +127,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
             createdAt: clock.toISOString(),
           };
           await configRepo.save(config);
-          return `Standup "${command.name}" created. Add questions and members, then activate it.`;
+          return `Standup "${command.name}" created for <#${command.channelId}>. Add questions and members, then activate it.`;
         }
 
         case "list": {
@@ -159,7 +160,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
           const result = validateScheduleInput(command.time, command.days, command.timezone);
           if (!result.ok) return result.error;
           await configRepo.update({ ...config, schedule: result.value });
-          return `Schedule set for "${command.name}".`;
+          return `Schedule set for "${command.name}": ${formatSchedule(result.value)}`;
         }
 
         case "add-question": {
@@ -198,7 +199,14 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
           const unresolved: string[] = [];
           for (const userId of command.userIds) {
             if (/^[UW][A-Z0-9]+$/.test(userId)) {
-              const member = await ensureMember(team.id, userId);
+              let member = await ensureMember(team.id, userId);
+              if (member.displayName === member.slackUserId) {
+                const resolved = await userResolver.lookupByUserId(userId);
+                if (resolved) {
+                  member = { ...member, displayName: resolved.displayName };
+                  await memberRepo.upsert(member);
+                }
+              }
               await configMemberRepo.addMember(config.id, member.id);
               added.push(member.displayName);
             } else {
@@ -229,15 +237,16 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
         case "remove-members": {
           const config = await configRepo.findByName(team.id, command.name);
           if (!config) return `Standup "${command.name}" not found.`;
-          let removed = 0;
+          const removedNames: string[] = [];
           for (const userId of command.userIds) {
             const member = await memberRepo.findBySlackUserId(team.id, userId);
             if (member) {
               await configMemberRepo.removeMember(config.id, member.id);
-              removed++;
+              removedNames.push(member.displayName);
             }
           }
-          return `Removed ${removed} member(s) from "${command.name}".`;
+          if (removedNames.length === 0) return `No members removed from "${command.name}".`;
+          return `Removed ${removedNames.length} member(s) from "${command.name}": ${removedNames.join(", ")}`;
         }
 
         case "timeout": {
@@ -254,7 +263,11 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
           if (!config) return `Standup "${command.name}" not found.`;
           if (config.active) return `"${command.name}" is already active.`;
           await configRepo.update({ ...config, active: true });
-          return `"${command.name}" activated.`;
+          let msg = `"${command.name}" activated.`;
+          if (!config.schedule) {
+            msg += ` Note: no schedule is set — use /tfx-standup schedule to configure when it runs.`;
+          }
+          return msg;
         }
 
         case "deactivate": {
@@ -301,7 +314,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
           try {
             await messenger.postToChannel(
               config.channelId,
-              formatSkippedSummary(member.displayName)
+              formatSkippedSummary(member.displayName, config.name)
             );
           } catch (err) {
             logger.error("Failed to post skip summary to channel", {
@@ -310,8 +323,10 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
               error: String(err),
             });
           }
+          await messenger.sendDM(slackUserId, `*${config.name}* standup skipped.`);
+        } else {
+          await messenger.sendDM(slackUserId, "Standup skipped.");
         }
-        await messenger.sendDM(slackUserId, "Standup skipped.");
         return;
       }
 
@@ -348,11 +363,11 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
       await sessionRepo.update(answerResult.session);
 
       if (answerResult.session.status === "completed") {
-        await messenger.sendDM(slackUserId, "Thanks! Your standup is complete.");
+        await messenger.sendDM(slackUserId, `Thanks! Your standup is complete. Your responses have been posted to <#${config.channelId}>.`);
         try {
           await messenger.postToChannel(
             config.channelId,
-            formatCompletedSummary(member.displayName, answerResult.session.responses)
+            formatCompletedSummary(member.displayName, answerResult.session.responses, config.name)
           );
         } catch (err) {
           logger.error("Failed to post completed summary to channel", {
@@ -390,8 +405,17 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
       const existingMemberIds = new Set(existingSessions.map((s) => s.memberId as string));
       const needsStandup = getMembersNeedingStandup(allMembers, existingMemberIds);
 
-      for (const m of needsStandup) {
+      for (let m of needsStandup) {
         try {
+          // Resolve display name if it still equals the raw Slack user ID
+          if (m.displayName === m.slackUserId) {
+            const resolved = await userResolver.lookupByUserId(m.slackUserId);
+            if (resolved) {
+              m = { ...m, displayName: resolved.displayName };
+              await memberRepo.upsert(m);
+            }
+          }
+
           const now = clock.toISOString();
           const session = createSession(
             SessionId(idGen.generate()),
@@ -409,7 +433,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
           const firstQ = questions[0]!;
           await messenger.sendDM(
             m.slackUserId,
-            formatFirstQuestionDM(config.name, firstQ, questions.length)
+            formatFirstQuestionDM(config.name, firstQ, questions.length, config.channelId)
           );
           logger.info("Sent standup DM", { member: m.slackUserId, config: config.name });
         } catch (err) {
@@ -453,7 +477,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
           try {
             await messenger.postToChannel(
               config.channelId,
-              formatTimedOutSummary(m.displayName, result.session, questions)
+              formatTimedOutSummary(m.displayName, result.session, questions, config.name)
             );
           } catch (err) {
             logger.error("Failed to post timeout summary to channel", {
@@ -462,7 +486,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
               error: String(err),
             });
           }
-          await messenger.sendDM(m.slackUserId, "Your standup has timed out.");
+          await messenger.sendDM(m.slackUserId, `Your *${config.name}* standup has timed out.`);
           logger.info("Session timed out", { session: session.id, member: m.slackUserId });
         } catch (err) {
           logger.error("Failed to check timeout for session", {

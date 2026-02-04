@@ -32,7 +32,7 @@ steps:
 
   - action: assert_dm_sent
     to: "U001"
-    contains: "Standup skipped"
+    contains: "standup skipped"
 
   - action: assert_channel_post
     channel: "#standup"

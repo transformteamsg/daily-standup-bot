@@ -15,5 +15,18 @@ export function createSlackUserResolver(app: App): UserResolver {
         return null;
       }
     },
+
+    async lookupByUserId(userId: string) {
+      try {
+        const result = await app.client.users.info({ user: userId });
+        const user = result.user;
+        if (!user) return null;
+        const displayName =
+          user.profile?.display_name || user.profile?.real_name || user.name || userId;
+        return { displayName };
+      } catch {
+        return null;
+      }
+    },
   };
 }
