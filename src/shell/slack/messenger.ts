@@ -25,6 +25,22 @@ export function createSlackMessenger(app: App, logger: Logger): Messenger {
       });
     },
 
+    async postToChannelWithTs(channelId: string, text: string): Promise<string> {
+      const result = await app.client.chat.postMessage({
+        channel: channelId,
+        text,
+      });
+      return result.ts!;
+    },
+
+    async postToThread(channelId: string, threadTs: string, text: string): Promise<void> {
+      await app.client.chat.postMessage({
+        channel: channelId,
+        text,
+        thread_ts: threadTs,
+      });
+    },
+
     async validateChannel(channelId: string) {
       try {
         const result = await app.client.conversations.info({ channel: channelId });

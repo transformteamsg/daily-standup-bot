@@ -6,14 +6,18 @@ import { createConfigRepository } from "@/shell/db/repositories/config-repositor
 import { createQuestionRepository } from "@/shell/db/repositories/question-repository";
 import { createConfigMemberRepository } from "@/shell/db/repositories/config-member-repository";
 import { createSessionRepository } from "@/shell/db/repositories/session-repository";
+import { createAdminRepository } from "@/shell/db/repositories/admin-repository";
+import { createDailyThreadRepository } from "@/shell/db/repositories/daily-thread-repository";
+import { createReportSubscriptionRepository } from "@/shell/db/repositories/report-subscription-repository";
 import { createOrchestrator } from "@/shell/orchestrator";
 import type { Orchestrator } from "@/shell/orchestrator";
 import type { Messenger, Clock, IdGenerator, Logger, UserResolver } from "@/core/ports";
 
 export interface SentMessage {
-  type: "dm" | "channel";
+  type: "dm" | "channel" | "thread";
   to: string;
   text: string;
+  threadTs?: string;
 }
 
 export interface FakeMessenger extends Messenger {
@@ -30,6 +34,13 @@ export function createFakeMessenger(): FakeMessenger {
     },
     async postToChannel(channelId: string, text: string) {
       sent.push({ type: "channel", to: channelId, text });
+    },
+    async postToChannelWithTs(channelId: string, text: string) {
+      sent.push({ type: "channel", to: channelId, text });
+      return `ts-${sent.length}`;
+    },
+    async postToThread(channelId: string, threadTs: string, text: string) {
+      sent.push({ type: "thread", to: channelId, text, threadTs });
     },
     async validateChannel(_channelId: string) {
       return { ok: true as const };
@@ -105,11 +116,15 @@ export function createTestHarness(clockStart?: Date): TestHarness {
     questionRepo: createQuestionRepository(db),
     configMemberRepo: createConfigMemberRepository(db),
     sessionRepo: createSessionRepository(db),
+    adminRepo: createAdminRepository(db),
+    dailyThreadRepo: createDailyThreadRepository(db),
+    subscriptionRepo: createReportSubscriptionRepository(db),
     messenger,
     clock,
     idGen,
     logger,
     userResolver,
+    superadminUserId: "U_ADMIN",
   });
 
   return { orchestrator, messenger, clock };

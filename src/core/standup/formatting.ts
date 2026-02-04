@@ -105,6 +105,15 @@ export function formatStandupConfigSummary(config: {
   ].join("\n");
 }
 
+export function formatDateForThread(dateStr: string): string {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ];
+  return `${months[month! - 1]} ${day}, ${year}`;
+}
+
 export function formatHelpMessage(): string {
   return [
     "*Standup Bot Commands*",
@@ -122,6 +131,16 @@ export function formatHelpMessage(): string {
     "`/tfx-standup activate <name>` — Activate a standup",
     "`/tfx-standup deactivate <name>` — Deactivate a standup",
     "`/tfx-standup delete <name>` — Delete a standup",
+    "",
+    "*Admin Commands (superadmin only)*",
+    "`/tfx-standup add-admin @user1 @user2` — Add admins",
+    "`/tfx-standup remove-admin @user1 @user2` — Remove admins",
+    "`/tfx-standup list-admins` — List all admins",
+    "",
+    "*Report Subscriptions*",
+    "`/tfx-standup subscribe <name> @user1 @user2` — Get a DM when these members finish",
+    "`/tfx-standup unsubscribe <name> @user1 @user2` — Stop getting DMs for these members",
+    "",
     "`/tfx-standup help` — Show this help message",
   ].join("\n");
 }

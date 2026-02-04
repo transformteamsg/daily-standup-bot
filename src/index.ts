@@ -11,6 +11,9 @@ import { createConfigRepository } from "@/shell/db/repositories/config-repositor
 import { createQuestionRepository } from "@/shell/db/repositories/question-repository";
 import { createConfigMemberRepository } from "@/shell/db/repositories/config-member-repository";
 import { createSessionRepository } from "@/shell/db/repositories/session-repository";
+import { createAdminRepository } from "@/shell/db/repositories/admin-repository";
+import { createDailyThreadRepository } from "@/shell/db/repositories/daily-thread-repository";
+import { createReportSubscriptionRepository } from "@/shell/db/repositories/report-subscription-repository";
 import { createOrchestrator } from "@/shell/orchestrator";
 import { registerCommandListener } from "@/shell/slack/listeners/command-listener";
 import { registerMessageListener } from "@/shell/slack/listeners/message-listener";
@@ -47,11 +50,15 @@ const orchestrator = createOrchestrator({
   questionRepo: createQuestionRepository(db),
   configMemberRepo: createConfigMemberRepository(db),
   sessionRepo: createSessionRepository(db),
+  adminRepo: createAdminRepository(db),
+  dailyThreadRepo: createDailyThreadRepository(db),
+  subscriptionRepo: createReportSubscriptionRepository(db),
   messenger,
   clock,
   idGen,
   logger,
   userResolver,
+  superadminUserId: env.SUPERADMIN_USER_ID,
 });
 
 registerCommandListener(app, orchestrator);

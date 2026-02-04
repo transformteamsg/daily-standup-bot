@@ -19,7 +19,12 @@ export type StandupCommand =
   | { readonly type: "activate"; readonly name: string }
   | { readonly type: "deactivate"; readonly name: string }
   | { readonly type: "delete"; readonly name: string }
-  | { readonly type: "help" };
+  | { readonly type: "help" }
+  | { readonly type: "add-admin"; readonly userIds: readonly string[] }
+  | { readonly type: "remove-admin"; readonly userIds: readonly string[] }
+  | { readonly type: "list-admins" }
+  | { readonly type: "subscribe"; readonly name: string; readonly userIds: readonly string[] }
+  | { readonly type: "unsubscribe"; readonly name: string; readonly userIds: readonly string[] };
 
 export type ParseResult =
   | { readonly ok: true; readonly command: StandupCommand }
@@ -51,6 +56,16 @@ export function parseCommand(text: string): ParseResult {
       return parseMembers(parts.slice(1), "add-members");
     case "remove-members":
       return parseMembers(parts.slice(1), "remove-members");
+    case "add-admin":
+      return parseAdminMembers(parts.slice(1), "add-admin");
+    case "remove-admin":
+      return parseAdminMembers(parts.slice(1), "remove-admin");
+    case "list-admins":
+      return { ok: true, command: { type: "list-admins" } };
+    case "subscribe":
+      return parseMembers(parts.slice(1), "subscribe");
+    case "unsubscribe":
+      return parseMembers(parts.slice(1), "unsubscribe");
     case "timeout":
       return parseTimeout(parts.slice(1));
     case "activate":
@@ -147,7 +162,7 @@ function parseRemoveQuestion(args: string[]): ParseResult {
 
 function parseMembers(
   args: string[],
-  type: "add-members" | "remove-members"
+  type: "add-members" | "remove-members" | "subscribe" | "unsubscribe"
 ): ParseResult {
   if (args.length < 2) {
     return {
@@ -162,6 +177,23 @@ function parseMembers(
     return match ? match[1]! : arg.replace(/^@/, "");
   });
   return { ok: true, command: { type, name, userIds } };
+}
+
+function parseAdminMembers(
+  args: string[],
+  type: "add-admin" | "remove-admin"
+): ParseResult {
+  if (args.length < 1) {
+    return {
+      ok: false,
+      error: `Usage: /tfx-standup ${type} @user1 @user2 ...`,
+    };
+  }
+  const userIds = args.map((arg) => {
+    const match = arg.match(/^<@([A-Z0-9]+)(?:\|[^>]*)?>$/);
+    return match ? match[1]! : arg.replace(/^@/, "");
+  });
+  return { ok: true, command: { type, userIds } };
 }
 
 function parseTimeout(args: string[]): ParseResult {

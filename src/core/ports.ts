@@ -9,6 +9,9 @@ import type {
   SessionId,
   TeamId,
   Team,
+  Admin,
+  DailyThread,
+  ReportSubscription,
 } from "@/core/domain/standup";
 
 // --- Repository Ports (DB access) ---
@@ -78,11 +81,33 @@ export interface ResponseRepository {
   save(response: StandupResponse): Promise<void>;
 }
 
+export interface AdminRepository {
+  findByTeamAndSlackUserId(teamId: TeamId, slackUserId: string): Promise<Admin | null>;
+  findByTeam(teamId: TeamId): Promise<readonly Admin[]>;
+  save(admin: Admin): Promise<void>;
+  delete(teamId: TeamId, slackUserId: string): Promise<void>;
+}
+
+export interface DailyThreadRepository {
+  findByConfigAndDate(configId: ConfigId, date: string): Promise<DailyThread | null>;
+  save(thread: DailyThread): Promise<void>;
+}
+
+export interface ReportSubscriptionRepository {
+  findBySubscriber(configId: ConfigId, subscriberSlackUserId: string): Promise<readonly ReportSubscription[]>;
+  findSubscribersForConfig(configId: ConfigId): Promise<readonly ReportSubscription[]>;
+  save(subscription: ReportSubscription): Promise<void>;
+  delete(configId: ConfigId, subscriberSlackUserId: string, targetMemberId: MemberId): Promise<void>;
+  deleteByConfigId(configId: ConfigId): Promise<void>;
+}
+
 // --- Adapter Ports (external services) ---
 
 export interface Messenger {
   sendDM(slackUserId: string, text: string): Promise<void>;
   postToChannel(channelId: string, text: string): Promise<void>;
+  postToChannelWithTs(channelId: string, text: string): Promise<string>;
+  postToThread(channelId: string, threadTs: string, text: string): Promise<void>;
   validateChannel(channelId: string): Promise<{ ok: true } | { ok: false; error: string }>;
 }
 

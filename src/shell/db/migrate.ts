@@ -78,4 +78,36 @@ export function runMigrations(db: Db) {
       answered_at TEXT NOT NULL
     )
   `);
+
+  db.run(sql`
+    CREATE TABLE IF NOT EXISTS admins (
+      id TEXT PRIMARY KEY,
+      team_id TEXT NOT NULL REFERENCES teams(id),
+      slack_user_id TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      UNIQUE(team_id, slack_user_id)
+    )
+  `);
+
+  db.run(sql`
+    CREATE TABLE IF NOT EXISTS daily_threads (
+      id TEXT PRIMARY KEY,
+      config_id TEXT NOT NULL REFERENCES standup_configs(id) ON DELETE CASCADE,
+      date TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      thread_ts TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      UNIQUE(config_id, date)
+    )
+  `);
+
+  db.run(sql`
+    CREATE TABLE IF NOT EXISTS report_subscriptions (
+      config_id TEXT NOT NULL REFERENCES standup_configs(id) ON DELETE CASCADE,
+      subscriber_slack_user_id TEXT NOT NULL,
+      target_member_id TEXT NOT NULL REFERENCES members(id),
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (config_id, subscriber_slack_user_id, target_member_id)
+    )
+  `);
 }

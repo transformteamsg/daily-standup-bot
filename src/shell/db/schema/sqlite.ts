@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, primaryKey, unique } from "drizzle-orm/sqlite-core";
 
 export const teams = sqliteTable("teams", {
   id: text("id").primaryKey(),
@@ -77,3 +77,40 @@ export const standupResponses = sqliteTable("standup_responses", {
   answer: text("answer").notNull(),
   answeredAt: text("answered_at").notNull(),
 });
+
+export const admins = sqliteTable("admins", {
+  id: text("id").primaryKey(),
+  teamId: text("team_id")
+    .notNull()
+    .references(() => teams.id),
+  slackUserId: text("slack_user_id").notNull(),
+  createdAt: text("created_at").notNull(),
+}, (table) => [
+  unique().on(table.teamId, table.slackUserId),
+]);
+
+export const dailyThreads = sqliteTable("daily_threads", {
+  id: text("id").primaryKey(),
+  configId: text("config_id")
+    .notNull()
+    .references(() => standupConfigs.id, { onDelete: "cascade" }),
+  date: text("date").notNull(),
+  channelId: text("channel_id").notNull(),
+  threadTs: text("thread_ts").notNull(),
+  createdAt: text("created_at").notNull(),
+}, (table) => [
+  unique().on(table.configId, table.date),
+]);
+
+export const reportSubscriptions = sqliteTable("report_subscriptions", {
+  configId: text("config_id")
+    .notNull()
+    .references(() => standupConfigs.id, { onDelete: "cascade" }),
+  subscriberSlackUserId: text("subscriber_slack_user_id").notNull(),
+  targetMemberId: text("target_member_id")
+    .notNull()
+    .references(() => members.id),
+  createdAt: text("created_at").notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.configId, table.subscriberSlackUserId, table.targetMemberId] }),
+]);

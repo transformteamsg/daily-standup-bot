@@ -5,6 +5,9 @@ import type {
   QuestionRepository,
   ConfigMemberRepository,
   SessionRepository,
+  AdminRepository,
+  DailyThreadRepository,
+  ReportSubscriptionRepository,
   Messenger,
   Clock,
   IdGenerator,
@@ -20,7 +23,10 @@ import {
   QuestionId,
   SessionId,
   ResponseId,
+  AdminId,
+  DailyThreadId,
 } from "@/core/domain/standup";
+import { formatDateForThread } from "@/core/standup/formatting";
 import {
   createSession,
   markDelivered,
@@ -49,11 +55,15 @@ export interface OrchestratorDeps {
   questionRepo: QuestionRepository;
   configMemberRepo: ConfigMemberRepository;
   sessionRepo: SessionRepository;
+  adminRepo: AdminRepository;
+  dailyThreadRepo: DailyThreadRepository;
+  subscriptionRepo: ReportSubscriptionRepository;
   messenger: Messenger;
   clock: Clock;
   idGen: IdGenerator;
   logger: Logger;
   userResolver: UserResolver;
+  superadminUserId: string;
 }
 
 export interface Orchestrator {
@@ -67,9 +77,102 @@ export interface Orchestrator {
 export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
   const {
     teamRepo, memberRepo, configRepo, questionRepo,
-    configMemberRepo, sessionRepo,
-    messenger, clock, idGen, logger, userResolver,
+    configMemberRepo, sessionRepo, adminRepo, dailyThreadRepo, subscriptionRepo,
+    messenger, clock, idGen, logger, userResolver, superadminUserId,
   } = deps;
+
+  const sentReports = new Set<string>();
+
+  function isSuperadmin(slackUserId: string): boolean {
+    return slackUserId === superadminUserId;
+  }
+
+  async function isAuthorized(slackUserId: string, teamId: ReturnType<typeof TeamId>): Promise<boolean> {
+    if (isSuperadmin(slackUserId)) return true;
+    const admin = await adminRepo.findByTeamAndSlackUserId(teamId, slackUserId);
+    return admin !== null;
+  }
+
+  async function getOrCreateDailyThread(config: StandupConfig, date: string): Promise<string> {
+    const existing = await dailyThreadRepo.findByConfigAndDate(config.id, date);
+    if (existing) return existing.threadTs;
+
+    const headerText = `*${config.name}* — ${formatDateForThread(date)}`;
+    const threadTs = await messenger.postToChannelWithTs(config.channelId, headerText);
+
+    const thread = {
+      id: DailyThreadId(idGen.generate()),
+      configId: config.id,
+      date,
+      channelId: config.channelId,
+      threadTs,
+      createdAt: clock.toISOString(),
+    };
+    await dailyThreadRepo.save(thread);
+    return threadTs;
+  }
+
+  async function checkAggregatedReports(configId: ReturnType<typeof ConfigId>, date: string): Promise<void> {
+    const allSubs = await subscriptionRepo.findSubscribersForConfig(configId);
+    if (allSubs.length === 0) return;
+
+    // Group subscriptions by subscriber
+    const bySubscriber = new Map<string, typeof allSubs[number][]>();
+    for (const sub of allSubs) {
+      const list = bySubscriber.get(sub.subscriberSlackUserId) ?? [];
+      list.push(sub);
+      bySubscriber.set(sub.subscriberSlackUserId, list);
+    }
+
+    const config = await configRepo.findById(configId);
+    if (!config) return;
+
+    const todaySessions = await sessionRepo.findByConfigAndDate(configId, date);
+
+    for (const [subscriberUserId, subs] of bySubscriber) {
+      const dedupKey = `${configId}:${subscriberUserId}:${date}`;
+      if (sentReports.has(dedupKey)) continue;
+
+      // Check if ALL target members have terminal sessions
+      const allDone = subs.every((sub) => {
+        const session = todaySessions.find((s) => s.memberId === sub.targetMemberId);
+        return session && (session.status === "completed" || session.status === "skipped" || session.status === "timed_out");
+      });
+
+      if (!allDone) continue;
+
+      // Build aggregated report
+      const lines: string[] = [`*Aggregated Report — ${config.name}* (${formatDateForThread(date)})\n`];
+
+      for (const sub of subs) {
+        const session = todaySessions.find((s) => s.memberId === sub.targetMemberId);
+        if (!session) continue;
+
+        const member = await memberRepo.findById(sub.targetMemberId);
+        if (!member) continue;
+
+        if (session.status === "completed") {
+          lines.push(formatCompletedSummary(member.displayName, session.responses, config.name));
+        } else if (session.status === "skipped") {
+          lines.push(formatSkippedSummary(member.displayName, config.name));
+        } else if (session.status === "timed_out") {
+          const questions = sortQuestionsByOrder(await questionRepo.findByConfigId(configId));
+          lines.push(formatTimedOutSummary(member.displayName, session, questions, config.name));
+        }
+      }
+
+      try {
+        await messenger.sendDM(subscriberUserId, lines.join("\n\n"));
+        sentReports.add(dedupKey);
+      } catch (err) {
+        logger.error("Failed to send aggregated report", {
+          subscriber: subscriberUserId,
+          config: config.name,
+          error: String(err),
+        });
+      }
+    }
+  }
 
   async function ensureTeam(slackTeamId: string) {
     let team = await teamRepo.findBySlackTeamId(slackTeamId);
@@ -102,8 +205,19 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
   }
 
   return {
-    async handleCommand(command, slackTeamId, _slackUserId) {
+    async handleCommand(command, slackTeamId, slackUserId) {
       const team = await ensureTeam(slackTeamId);
+
+      // Auth gate: admin commands require superadmin, most commands require admin
+      if (command.type === "add-admin" || command.type === "remove-admin") {
+        if (!isSuperadmin(slackUserId)) {
+          return "You are not authorized to use this command.";
+        }
+      } else if (command.type !== "help") {
+        if (!await isAuthorized(slackUserId, team.id)) {
+          return "You are not authorized to use this command.";
+        }
+      }
 
       switch (command.type) {
         case "create": {
@@ -281,10 +395,90 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
         case "delete": {
           const config = await configRepo.findByName(team.id, command.name);
           if (!config) return `Standup "${command.name}" not found.`;
+          await subscriptionRepo.deleteByConfigId(config.id);
           await sessionRepo.deleteByConfigId(config.id);
           await questionRepo.deleteByConfigId(config.id);
           await configRepo.delete(config.id);
           return `"${command.name}" deleted.`;
+        }
+
+        case "add-admin": {
+          const added: string[] = [];
+          for (const userId of command.userIds) {
+            const admin = {
+              id: AdminId(idGen.generate()),
+              teamId: team.id,
+              slackUserId: userId,
+              createdAt: clock.toISOString(),
+            };
+            await adminRepo.save(admin);
+            const resolved = await userResolver.lookupByUserId(userId);
+            added.push(resolved?.displayName ?? userId);
+          }
+          return `Added admin(s): ${added.join(", ")}`;
+        }
+
+        case "remove-admin": {
+          const removed: string[] = [];
+          for (const userId of command.userIds) {
+            await adminRepo.delete(team.id, userId);
+            const resolved = await userResolver.lookupByUserId(userId);
+            removed.push(resolved?.displayName ?? userId);
+          }
+          return `Removed admin(s): ${removed.join(", ")}`;
+        }
+
+        case "list-admins": {
+          const adminList = await adminRepo.findByTeam(team.id);
+          if (adminList.length === 0) return "No admins configured. The superadmin can add admins with `/tfx-standup add-admin @user`.";
+          const names: string[] = [];
+          for (const a of adminList) {
+            const resolved = await userResolver.lookupByUserId(a.slackUserId);
+            names.push(resolved?.displayName ?? `<@${a.slackUserId}>`);
+          }
+          return `*Admins:*\n${names.map((n) => `• ${n}`).join("\n")}`;
+        }
+
+        case "subscribe": {
+          const config = await configRepo.findByName(team.id, command.name);
+          if (!config) return `Standup "${command.name}" not found.`;
+          const configMembers = await configMemberRepo.findMembersByConfig(config.id);
+          const added: string[] = [];
+          const notMembers: string[] = [];
+          for (const userId of command.userIds) {
+            const member = configMembers.find((m) => m.slackUserId === userId);
+            if (!member) {
+              const resolved = await userResolver.lookupByUserId(userId);
+              notMembers.push(resolved?.displayName ?? userId);
+              continue;
+            }
+            await subscriptionRepo.save({
+              configId: config.id,
+              subscriberSlackUserId: slackUserId,
+              targetMemberId: member.id,
+              createdAt: clock.toISOString(),
+            });
+            added.push(member.displayName);
+          }
+          const lines: string[] = [];
+          if (added.length > 0) lines.push(`Subscribed to updates from: ${added.join(", ")} in "${command.name}".`);
+          if (notMembers.length > 0) lines.push(`Not members of "${command.name}": ${notMembers.join(", ")}`);
+          return lines.join("\n") || `No subscriptions added for "${command.name}".`;
+        }
+
+        case "unsubscribe": {
+          const config = await configRepo.findByName(team.id, command.name);
+          if (!config) return `Standup "${command.name}" not found.`;
+          const removed: string[] = [];
+          for (const userId of command.userIds) {
+            const member = await memberRepo.findBySlackUserId(team.id, userId);
+            if (member) {
+              await subscriptionRepo.delete(config.id, slackUserId, member.id);
+              removed.push(member.displayName);
+            }
+          }
+          if (removed.length === 0) return `No subscriptions removed for "${command.name}".`;
+          return `Unsubscribed from updates from: ${removed.join(", ")} in "${command.name}".`;
         }
 
         case "help":
@@ -312,8 +506,10 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
         const config = await configRepo.findById(session.configId);
         if (config) {
           try {
-            await messenger.postToChannel(
+            const threadTs = await getOrCreateDailyThread(config, session.date);
+            await messenger.postToThread(
               config.channelId,
+              threadTs,
               formatSkippedSummary(member.displayName, config.name)
             );
           } catch (err) {
@@ -324,6 +520,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
             });
           }
           await messenger.sendDM(slackUserId, `*${config.name}* standup skipped.`);
+          await checkAggregatedReports(session.configId, session.date);
         } else {
           await messenger.sendDM(slackUserId, "Standup skipped.");
         }
@@ -365,8 +562,10 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
       if (answerResult.session.status === "completed") {
         await messenger.sendDM(slackUserId, `Thanks! Your standup is complete. Your responses have been posted to <#${config.channelId}>.`);
         try {
-          await messenger.postToChannel(
+          const threadTs = await getOrCreateDailyThread(config, activeSession.date);
+          await messenger.postToThread(
             config.channelId,
+            threadTs,
             formatCompletedSummary(member.displayName, answerResult.session.responses, config.name)
           );
         } catch (err) {
@@ -376,6 +575,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
             error: String(err),
           });
         }
+        await checkAggregatedReports(activeSession.configId, activeSession.date);
       } else if (answerResult.session.status === "in_progress") {
         const nextQ = getCurrentQuestion(answerResult.session, questions);
         if (nextQ) {
@@ -475,8 +675,10 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
           );
 
           try {
-            await messenger.postToChannel(
+            const threadTs = await getOrCreateDailyThread(config, session.date);
+            await messenger.postToThread(
               config.channelId,
+              threadTs,
               formatTimedOutSummary(m.displayName, result.session, questions, config.name)
             );
           } catch (err) {
@@ -487,6 +689,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
             });
           }
           await messenger.sendDM(m.slackUserId, `Your *${config.name}* standup has timed out.`);
+          await checkAggregatedReports(session.configId, session.date);
           logger.info("Session timed out", { session: session.id, member: m.slackUserId });
         } catch (err) {
           logger.error("Failed to check timeout for session", {

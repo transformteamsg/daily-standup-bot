@@ -5,6 +5,8 @@ export type ConfigId = string & { readonly __brand: "ConfigId" };
 export type QuestionId = string & { readonly __brand: "QuestionId" };
 export type SessionId = string & { readonly __brand: "SessionId" };
 export type ResponseId = string & { readonly __brand: "ResponseId" };
+export type AdminId = string & { readonly __brand: "AdminId" };
+export type DailyThreadId = string & { readonly __brand: "DailyThreadId" };
 
 // Constructors
 export const TeamId = (id: string): TeamId => id as TeamId;
@@ -13,6 +15,8 @@ export const ConfigId = (id: string): ConfigId => id as ConfigId;
 export const QuestionId = (id: string): QuestionId => id as QuestionId;
 export const SessionId = (id: string): SessionId => id as SessionId;
 export const ResponseId = (id: string): ResponseId => id as ResponseId;
+export const AdminId = (id: string): AdminId => id as AdminId;
+export const DailyThreadId = (id: string): DailyThreadId => id as DailyThreadId;
 
 // Domain entities
 export interface Team {
@@ -130,3 +134,29 @@ export type StandupSession =
 export type TransitionResult<T> =
   | { readonly ok: true; readonly session: T }
   | { readonly ok: false; readonly error: string };
+
+// Admin entity
+export interface Admin {
+  readonly id: AdminId;
+  readonly teamId: TeamId;
+  readonly slackUserId: string;
+  readonly createdAt: string;
+}
+
+// Daily thread entity
+export interface DailyThread {
+  readonly id: DailyThreadId;
+  readonly configId: ConfigId;
+  readonly date: string; // YYYY-MM-DD
+  readonly channelId: string;
+  readonly threadTs: string;
+  readonly createdAt: string;
+}
+
+// Report subscription entity
+export interface ReportSubscription {
+  readonly configId: ConfigId;
+  readonly subscriberSlackUserId: string;
+  readonly targetMemberId: MemberId;
+  readonly createdAt: string;
+}

@@ -6,6 +6,7 @@ export const envSchema = z.object({
   SLACK_SIGNING_SECRET: z.string().min(1),
   DATABASE_URL: z.string().default("./data/standup.db"),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+  SUPERADMIN_USER_ID: z.string().min(1),
 });
 
 export type Env = z.infer<typeof envSchema>;

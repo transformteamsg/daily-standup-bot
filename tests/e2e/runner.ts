@@ -135,7 +135,7 @@ async function executeStep(harness: TestHarness, step: ScenarioStep, _setup: Sce
       const containsList = (step.contains as string[] | string);
       const needles = Array.isArray(containsList) ? containsList : [containsList];
       const post = messenger.sent.find(
-        (m) => m.type === "channel" && m.to === resolvedChannel &&
+        (m) => (m.type === "channel" || m.type === "thread") && m.to === resolvedChannel &&
           needles.every((n) => m.text.includes(n))
       );
       expect(
@@ -149,7 +149,7 @@ async function executeStep(harness: TestHarness, step: ScenarioStep, _setup: Sce
       const channel = step.channel as string;
       const resolvedChannel = channel.replace("#", "C_");
       const post = messenger.sent.find(
-        (m) => m.type === "channel" && m.to === resolvedChannel
+        (m) => (m.type === "channel" || m.type === "thread") && m.to === resolvedChannel
       );
       expect(post, `Expected no channel post to ${channel}`).toBeUndefined();
       break;
