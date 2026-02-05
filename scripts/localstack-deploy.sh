@@ -5,20 +5,13 @@ echo "Building Lambda bundles..."
 pnpm build:lambda
 
 echo "Deploying to LocalStack..."
-cd infra
+cd infra/env/prod
 
-# Install dependencies if needed
-if [ ! -d "node_modules" ]; then
-  echo "Installing CDK dependencies..."
-  pnpm install
-fi
-
-# Bootstrap and deploy using cdklocal
-npx cdklocal bootstrap
-npx cdklocal deploy --require-approval never \
-  --parameters SlackBotToken="${SLACK_BOT_TOKEN:-xoxb-test}" \
-  --parameters SlackSigningSecret="${SLACK_SIGNING_SECRET:-test-signing-secret}" \
-  --parameters SuperadminUserId="${SUPERADMIN_USER_ID:-U_ADMIN}"
+TERRAGRUNT_TFPATH=tflocal \
+  TF_VAR_slack_bot_token="${SLACK_BOT_TOKEN:-xoxb-test}" \
+  TF_VAR_slack_signing_secret="${SLACK_SIGNING_SECRET:-test-signing-secret}" \
+  TF_VAR_superadmin_user_id="${SUPERADMIN_USER_ID:-U_ADMIN}" \
+  terragrunt run-all apply --terragrunt-non-interactive
 
 echo "Deployment complete!"
 echo "API Gateway endpoint: http://localhost:4566/restapis"

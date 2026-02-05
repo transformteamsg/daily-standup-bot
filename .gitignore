@@ -8,11 +8,14 @@ coverage/
 drizzle/meta/
 .env.*
 
-# CDK
-infra/dist/
-infra/node_modules/
-cdk.out/
-infra/cdk.out/
+# Terraform / Terragrunt
+infra/**/.terraform/
+infra/**/.terragrunt-cache/
+infra/**/backend.tf
+infra/**/provider.tf
+*.tfstate
+*.tfstate.backup
+*.tfplan
 
 # LocalStack
 .localstack/
