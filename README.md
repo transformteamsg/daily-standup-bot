@@ -64,6 +64,14 @@ infra/            # Terragrunt + Terraform
 | API Gateway | HTTP API, `POST /slack/events` -> slack Lambda |
 | EventBridge | `rate(1 minute)` -> tick Lambda |
 
+## Prerequisites
+
+- **Node.js 20** and **pnpm**
+- **AWS CLI** (configured with credentials for production deployment)
+- **Terraform >= 1.5** and **Terragrunt**
+- **Docker** and **Docker Compose** (local development)
+- **terraform-local** (`tflocal`) (local development) — used by `scripts/localstack-deploy.sh`
+
 ## Setup
 
 ### 1. Create Slack App
@@ -72,6 +80,8 @@ infra/            # Terragrunt + Terraform
 2. Create SLACK_BOT_TOKEN via `OAuth & Permissions` -> `OAuth Tokens`
 3. Note down `Signing Secret` for `SLACK_SIGNING_SECRET`
 4. Ensure `Allow users to send Slash commands and messages from the messages tab` is checked in `App Home`
+
+> **Note:** `slack-app-manifest.yaml` contains `YOUR_API_GATEWAY_URL` placeholders in the Event Subscriptions request URL and Slash Commands URL. You will get the real URL after deploying infrastructure in **step 4** — come back and update the Slack app afterward.
 
 ### 2. Configure Environment
 
@@ -90,20 +100,36 @@ Start LocalStack and PostgreSQL:
 docker compose up -d
 ```
 
-Install dependencies and build Lambda bundles:
+Install dependencies and deploy to LocalStack (the script builds Lambda bundles automatically):
 
 ```bash
 pnpm install
-pnpm build:lambda
-```
-
-Deploy to LocalStack:
-
-```bash
 ./scripts/localstack-deploy.sh
 ```
 
-Use ngrok or a tunnel to expose the LocalStack API Gateway endpoint to Slack, then configure your Slack app's Request URL to point at the tunnel.
+Database tables are created automatically on the first Lambda invocation via `runMigrations()` — no manual migration step is needed.
+
+Find the LocalStack API Gateway invoke URL:
+
+```bash
+awslocal apigateway get-rest-apis
+```
+
+Look for the `id` field in the output, then construct the invoke URL:
+`http://localhost:4566/restapis/<id>/prod/_user_request_/slack/events`
+
+Expose LocalStack to the internet so Slack can reach it:
+
+```bash
+cloudflared tunnel --url http://localhost:4566
+```
+
+Take the cloudflared HTTPS URL and construct the full request URL:
+`https://<tunnel-id>.trycloudflare.com/restapis/<id>/prod/_user_request_/slack/events`
+
+Set this URL in your Slack app under both:
+- **Event Subscriptions** -> **Request URL**
+- **Slash Commands** -> edit `/tfx-standup` -> **Request URL**
 
 ### 4. Production Deployment
 
@@ -134,7 +160,16 @@ cd infra/env/prod/api-gateway
 terragrunt output slack_request_url
 ```
 
-Set this as your Slack app's Request URL.
+Update your Slack app with this URL in two places:
+
+1. **Event Subscriptions** -> **Request URL** — set to the output URL
+2. **Slash Commands** -> edit `/tfx-standup` -> **Request URL** — set to the same URL
+
+These correspond to the `YOUR_API_GATEWAY_URL` placeholders in `slack-app-manifest.yaml` (lines 14 and 30).
+
+### Database Migrations
+
+No manual migration step is needed. Both Lambda handlers (`src/handlers/slack.ts`, `src/handlers/tick.ts`) await `migrationPromise` at cold start, which runs idempotent `CREATE TABLE IF NOT EXISTS` statements via `src/shell/db/migrate.ts`. Migrations execute automatically on the first invocation after a deploy.
 
 ## Commands
 
@@ -240,3 +275,13 @@ PostgreSQL with Drizzle ORM. Tables:
 - `admins` — Admin role assignments per team
 - `daily_threads` — Daily thread timestamps per config per day
 - `report_subscriptions` — Aggregated report subscriptions
+
+### Local Development Commands
+
+These Drizzle Kit scripts are for local development only. Production uses the programmatic auto-migration described above.
+
+```bash
+pnpm run db:generate   # Generate Drizzle migration files from schema changes
+pnpm run db:migrate    # Apply migrations to the local database
+pnpm run db:studio     # Open Drizzle Studio (visual database browser)
+```
