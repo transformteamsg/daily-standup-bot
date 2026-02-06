@@ -16,6 +16,7 @@ variable "lambda_sg_id" {
 variable "secret_arn" {
   description = "ARN of the Secrets Manager secret for RDS credentials"
   type        = string
+  default     = ""
 }
 
 variable "database_url" {
@@ -38,6 +39,11 @@ variable "slack_signing_secret" {
 
 variable "superadmin_user_id" {
   description = "Slack User ID of the superadmin"
+  type        = string
+}
+
+variable "dist_dir" {
+  description = "Absolute path to the dist directory containing Lambda build artifacts"
   type        = string
 }
 

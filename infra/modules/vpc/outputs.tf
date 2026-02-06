@@ -15,5 +15,5 @@ output "public_subnet_ids" {
 
 output "db_subnet_group_name" {
   description = "Name of the DB subnet group"
-  value       = aws_db_subnet_group.main.name
+  value       = var.create_db_subnet_group ? aws_db_subnet_group.main[0].name : ""
 }

@@ -117,6 +117,8 @@ resource "aws_route_table_association" "private" {
 # --- DB Subnet Group ---
 
 resource "aws_db_subnet_group" "main" {
+  count = var.create_db_subnet_group ? 1 : 0
+
   name       = "${var.project_name}-db-subnet-group"
   subnet_ids = aws_subnet.private[*].id
 

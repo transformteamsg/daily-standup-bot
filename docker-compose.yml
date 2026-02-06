@@ -4,7 +4,7 @@ services:
     ports:
       - "4566:4566"
     environment:
-      - SERVICES=lambda,apigateway,events,iam,sts,logs
+      - SERVICES=lambda,apigateway,events,iam,sts,logs,s3,dynamodb,ec2
       - LAMBDA_EXECUTOR=docker-reuse
       - DEFAULT_REGION=ap-southeast-1
     volumes:

@@ -20,6 +20,11 @@ dependency "security_groups" {
 
 dependency "rds" {
   config_path = "../rds"
+  mock_outputs = {
+    database_url = "postgresql://standup:standup@localhost:5432/standup"
+    secret_arn   = ""
+  }
+  mock_outputs_allowed_terraform_commands = ["validate", "plan", "apply", "destroy"]
 }
 
 inputs = {
@@ -28,6 +33,7 @@ inputs = {
   lambda_sg_id         = dependency.security_groups.outputs.lambda_sg_id
   secret_arn           = dependency.rds.outputs.secret_arn
   database_url         = dependency.rds.outputs.database_url
+  dist_dir             = "${get_repo_root()}/dist"
   slack_bot_token      = get_env("TF_VAR_slack_bot_token")
   slack_signing_secret = get_env("TF_VAR_slack_signing_secret")
   superadmin_user_id   = get_env("TF_VAR_superadmin_user_id")

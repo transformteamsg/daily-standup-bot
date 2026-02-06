@@ -30,6 +30,8 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc" {
 }
 
 resource "aws_iam_role_policy" "lambda_secrets" {
+  count = var.secret_arn != "" ? 1 : 0
+
   name = "${var.project_name}-lambda-secrets"
   role = aws_iam_role.lambda.id
 
@@ -52,8 +54,8 @@ resource "aws_iam_role_policy" "lambda_secrets" {
 
 data "archive_file" "lambda" {
   type        = "zip"
-  source_dir  = "${path.module}/../../../dist/handlers"
-  output_path = "${path.module}/../../../dist/lambda.zip"
+  source_dir  = "${var.dist_dir}/handlers"
+  output_path = "${var.dist_dir}/lambda.zip"
 }
 
 # --- Lambda Functions ---
