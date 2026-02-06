@@ -131,6 +131,20 @@ Take the cloudflared HTTPS URL (e.g., `https://xxx.trycloudflare.com`) and set i
 
 > **Note:** The `enable_function_url` Terraform variable controls Lambda Function URL creation. It's automatically enabled when `LOCALSTACK=1` is set (as in `localstack-deploy.sh`). In production, API Gateway is used instead. The `--http-host-header` flag is required because cloudflared needs to pass the correct Host header for LocalStack to route requests to the Lambda Function URL.
 
+#### EventBridge Scheduled Rules (LocalStack Limitation)
+
+LocalStack's free tier does not support EventBridge scheduled rules — rules are created but never fire. To simulate the tick Lambda schedule locally:
+
+```bash
+# Invoke tick Lambda every 60 seconds (Ctrl+C to stop)
+make tick
+
+# Single invocation
+make tick-once
+```
+
+See [docs/known_issues/localstack-eventbridge-scheduled-rules.md](docs/known_issues/localstack-eventbridge-scheduled-rules.md) for details.
+
 ### 4. Production Deployment
 
 First-time setup — bootstrap the Terraform state backend:

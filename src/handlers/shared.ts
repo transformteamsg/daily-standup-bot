@@ -18,10 +18,11 @@ import { createSlackUserResolver } from "@/shell/slack/user-resolver";
 import type { Clock, IdGenerator, Logger } from "@/core/ports";
 
 export function createLogger(_level: string): Logger {
+  const fmt = (meta: unknown) => (meta ? JSON.stringify(meta) : "");
   return {
-    info: (msg, meta) => console.log(`[INFO] ${msg}`, meta ?? ""),
-    warn: (msg, meta) => console.warn(`[WARN] ${msg}`, meta ?? ""),
-    error: (msg, meta) => console.error(`[ERROR] ${msg}`, meta ?? ""),
+    info: (msg, meta) => console.log(`[INFO] ${msg} ${fmt(meta)}`),
+    warn: (msg, meta) => console.warn(`[WARN] ${msg} ${fmt(meta)}`),
+    error: (msg, meta) => console.error(`[ERROR] ${msg} ${fmt(meta)}`),
   };
 }
 
