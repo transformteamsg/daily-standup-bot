@@ -9,14 +9,12 @@ export AWS_ENDPOINT_URL := http://localhost:4566
 # Default target
 help:
 	@echo "Available targets:"
-	@echo "  tick       - Simulate EventBridge by invoking tick Lambda every 60s (LocalStack)"
+	@echo "  tick       - Manually invoke tick Lambda every 60s (LocalStack)"
 	@echo "  tick-once  - Invoke tick Lambda once (LocalStack)"
 	@echo "  build      - Build Lambda handlers"
 	@echo "  test       - Run tests"
 
-# Simulate EventBridge scheduled rule for LocalStack
-# LocalStack free tier doesn't support scheduled EventBridge rules
-# See: docs/known_issues/localstack-eventbridge-scheduled-rules.md
+# Manually invoke tick Lambda for testing/debugging
 tick:
 	@echo "Starting tick loop (Ctrl+C to stop)..."
 	@while true; do \
