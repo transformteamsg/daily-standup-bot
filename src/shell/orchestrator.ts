@@ -589,13 +589,11 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
 
     async triggerStandup(configId) {
       const config = await configRepo.findById(ConfigId(configId));
-      logger.info('config', { config });
       if (!config || !config.active) return;
 
       const questions = sortQuestionsByOrder(
         await questionRepo.findByConfigId(config.id)
       );
-      logger.info('questions',  {questions});
       if (questions.length === 0) {
         logger.warn("No questions configured", { configId });
         return;
@@ -607,10 +605,9 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
       const existingMemberIds = new Set(existingSessions.map((s) => s.memberId as string));
       const needsStandup = getMembersNeedingStandup(allMembers, existingMemberIds);
 
-      logger.info('preloop', { allMembers, today, existingSessions, existingMemberIds, needsStandup });
+      logger.info(`${needsStandup.length} members to DM`);
 
       for (let m of needsStandup) {
-        logger.info('loop', { m });
         try {
           // Resolve display name if it still equals the raw Slack user ID
           if (m.displayName === m.slackUserId) {
