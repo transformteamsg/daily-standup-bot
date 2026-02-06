@@ -1,6 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
+# Load environment variables from .env if it exists
+if [ -f .env ]; then
+  set -a
+  source .env
+  set +a
+fi
+
 echo "Building Lambda bundles..."
 pnpm build:lambda
 
@@ -17,13 +24,13 @@ export TF_VAR_slack_bot_token="${SLACK_BOT_TOKEN:-xoxb-test}"
 export TF_VAR_slack_signing_secret="${SLACK_SIGNING_SECRET:-test-signing-secret}"
 export TF_VAR_superadmin_user_id="${SUPERADMIN_USER_ID:-U_ADMIN}"
 export TF_VAR_create_db_subnet_group=false
-export TF_VAR_database_url="postgresql://standup:standup@localhost:5432/standup"
+export TF_VAR_database_url="${DATABASE_URL}"
 
 # Deploy units in dependency order, skipping rds and api-gateway (LocalStack Pro)
 for unit in vpc security-groups lambda eventbridge; do
   echo "Applying ${unit}..."
   pushd "${unit}" > /dev/null
-  terragrunt apply --non-interactive --backend-bootstrap
+  terragrunt apply --non-interactive --backend-bootstrap --auto-approve
   popd > /dev/null
 done
 
