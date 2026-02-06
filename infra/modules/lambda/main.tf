@@ -117,3 +117,12 @@ resource "aws_lambda_function" "tick_handler" {
 
   tags = var.tags
 }
+
+# --- Lambda Function URLs (for LocalStack / direct HTTP access) ---
+
+resource "aws_lambda_function_url" "slack_handler" {
+  count = var.enable_function_url ? 1 : 0
+
+  function_name      = aws_lambda_function.slack_handler.function_name
+  authorization_type = "NONE"
+}

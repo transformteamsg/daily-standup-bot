@@ -52,3 +52,9 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "enable_function_url" {
+  description = "Enable Lambda Function URL for direct HTTP access (useful for LocalStack)"
+  type        = bool
+  default     = false
+}

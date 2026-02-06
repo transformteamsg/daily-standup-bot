@@ -61,7 +61,8 @@ infra/            # Terragrunt + Terraform
 | RDS PostgreSQL | PostgreSQL 16, `db.t3.micro`, single-AZ, 20GB gp3 |
 | Lambda (slack) | Node 20, 256MB, 30s timeout, VPC-attached |
 | Lambda (tick) | Node 20, 256MB, 60s timeout, VPC-attached |
-| API Gateway | HTTP API, `POST /slack/events` -> slack Lambda |
+| API Gateway | HTTP API, `POST /slack/events` -> slack Lambda (production) |
+| Lambda Function URL | Direct HTTP endpoint for slack Lambda (LocalStack only) |
 | EventBridge | `rate(1 minute)` -> tick Lambda |
 
 ## Prerequisites
@@ -109,27 +110,26 @@ pnpm install
 
 Database tables are created automatically on the first Lambda invocation via `runMigrations()` — no manual migration step is needed.
 
-Find the LocalStack API Gateway invoke URL:
-
-```bash
-awslocal apigateway get-rest-apis
-```
-
-Look for the `id` field in the output, then construct the invoke URL:
-`http://localhost:4566/restapis/<id>/prod/_user_request_/slack/events`
+The deploy script outputs a **Lambda Function URL** for the Slack handler. This provides direct HTTP access to the Lambda without requiring API Gateway (which is a LocalStack Pro feature).
 
 Expose LocalStack to the internet so Slack can reach it:
 
 ```bash
-cloudflared tunnel --url http://localhost:4566
+cloudflared tunnel --url http://127.0.0.1:4566 --http-host-header <function-url-host>
 ```
 
-Take the cloudflared HTTPS URL and construct the full request URL:
-`https://<tunnel-id>.trycloudflare.com/restapis/<id>/prod/_user_request_/slack/events`
+For example, if the Function URL is `http://abc123.lambda-url.ap-southeast-1.localhost.localstack.cloud:4566/`, run:
 
-Set this URL in your Slack app under both:
+```bash
+cloudflared tunnel --url http://127.0.0.1:4566 \
+  --http-host-header abc123.lambda-url.ap-southeast-1.localhost.localstack.cloud:4566
+```
+
+Take the cloudflared HTTPS URL (e.g., `https://xxx.trycloudflare.com`) and set it in your Slack app under both:
 - **Event Subscriptions** -> **Request URL**
 - **Slash Commands** -> edit `/tfx-standup` -> **Request URL**
+
+> **Note:** The `enable_function_url` Terraform variable controls Lambda Function URL creation. It's automatically enabled when `LOCALSTACK=1` is set (as in `localstack-deploy.sh`). In production, API Gateway is used instead. The `--http-host-header` flag is required because cloudflared needs to pass the correct Host header for LocalStack to route requests to the Lambda Function URL.
 
 ### 4. Production Deployment
 

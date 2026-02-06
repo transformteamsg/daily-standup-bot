@@ -17,3 +17,8 @@ output "tick_handler_arn" {
   description = "ARN of the tick handler Lambda function"
   value       = aws_lambda_function.tick_handler.arn
 }
+
+output "slack_handler_function_url" {
+  description = "Function URL for direct HTTP access to the Slack handler (if enabled)"
+  value       = var.enable_function_url ? aws_lambda_function_url.slack_handler[0].function_url : null
+}

@@ -34,6 +34,25 @@ for unit in vpc security-groups lambda eventbridge; do
   popd > /dev/null
 done
 
+echo ""
 echo "Deployment complete!"
-echo "Invoke Lambda directly:"
-echo "  awslocal --region ap-southeast-1 lambda invoke --function-name tfx-slack-bot-slack-handler --payload '{}' /dev/stdout"
+echo ""
+
+# Get function URL directly from LocalStack
+FUNCTION_URL=$(awslocal --region ap-southeast-1 lambda get-function-url-config \
+  --function-name tfx-slack-bot-slack-handler \
+  --query 'FunctionUrl' --output text 2>/dev/null || true)
+
+if [ -n "$FUNCTION_URL" ] && [ "$FUNCTION_URL" != "None" ]; then
+  # Extract host from function URL (remove http:// prefix and trailing /)
+  FUNCTION_HOST=$(echo "$FUNCTION_URL" | sed 's|^http://||' | sed 's|/$||')
+
+  echo "Slack handler Function URL: $FUNCTION_URL"
+  echo ""
+  echo "To expose to Slack via cloudflared:"
+  echo "  cloudflared tunnel --url http://127.0.0.1:4566 --http-host-header ${FUNCTION_HOST}"
+  echo ""
+  echo "Then set the cloudflared HTTPS URL in your Slack app's Event Subscriptions and Slash Commands."
+else
+  echo "Note: Lambda Function URL not available."
+fi

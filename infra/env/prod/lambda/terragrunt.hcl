@@ -38,4 +38,5 @@ inputs = {
   slack_signing_secret = get_env("TF_VAR_slack_signing_secret")
   superadmin_user_id   = get_env("TF_VAR_superadmin_user_id")
   tags                 = local.common_vars.locals.common_tags
+  enable_function_url  = get_env("LOCALSTACK", "") != ""
 }
