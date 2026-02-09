@@ -68,10 +68,49 @@ infra/            # Terragrunt + Terraform
 ## Prerequisites
 
 - **Node.js 20** and **pnpm**
-- **AWS CLI** (configured with credentials for production deployment)
+- **AWS account** with appropriate permissions:
+  - IAM (for creating roles and policies)
+  - VPC (for networking resources)
+  - RDS (for PostgreSQL database)
+  - Lambda (for function deployment)
+  - EventBridge (for scheduled triggers)
+  - API Gateway (for HTTP endpoints)
+  - Secrets Manager (for credential storage)
+- **AWS CLI** installed and configured (`aws configure`)
+  - Recommended: Create a dedicated IAM user for Terraform with required permissions
+  - Or use AWS SSO/IAM Identity Center for temporary credentials
 - **Terraform >= 1.5** and **Terragrunt**
 - **Docker** and **Docker Compose** (local development)
 - **terraform-local** (`tflocal`) (local development) — used by `scripts/localstack-deploy.sh`
+- **cloudflared** (local development) — for exposing LocalStack to the internet
+
+## Security
+
+**Important**: This repository is public. Never commit credentials or secrets to git.
+
+### Best Practices
+
+- Never commit `.env` files — verify `.gitignore` includes `.env`
+- Rotate all credentials immediately after initial setup or if compromised
+- Use AWS IAM roles with least privilege principle for production
+- Production secrets are stored in:
+  - AWS Secrets Manager: RDS database credentials (automatic via Terraform)
+  - Lambda environment variables: Slack bot token and signing secret
+  - Terraform variables: Passed via `TF_VAR_*` environment variables
+- Monitor AWS CloudWatch logs for suspicious activity
+- Review security groups and VPC configuration regularly
+
+### Credential Management
+
+For local development:
+1. Copy `.env.example` to `.env`
+2. Fill in your Slack app credentials
+3. Never commit `.env` to git (already in `.gitignore`)
+
+For production deployment:
+1. Export credentials as environment variables before running Terragrunt
+2. Terraform automatically creates RDS credentials in AWS Secrets Manager
+3. Slack credentials are passed to Lambda via Terraform variables
 
 ## Setup
 
@@ -131,19 +170,9 @@ Take the cloudflared HTTPS URL (e.g., `https://xxx.trycloudflare.com`) and set i
 
 > **Note:** The `enable_function_url` Terraform variable controls Lambda Function URL creation. It's automatically enabled when `LOCALSTACK=1` is set (as in `localstack-deploy.sh`). In production, API Gateway is used instead. The `--http-host-header` flag is required because cloudflared needs to pass the correct Host header for LocalStack to route requests to the Lambda Function URL.
 
-#### EventBridge Scheduled Rules (LocalStack Limitation)
+#### EventBridge Scheduled Rules
 
-LocalStack's free tier does not support EventBridge scheduled rules — rules are created but never fire. To simulate the tick Lambda schedule locally:
-
-```bash
-# Invoke tick Lambda every 60 seconds (Ctrl+C to stop)
-make tick
-
-# Single invocation
-make tick-once
-```
-
-See [docs/known_issues/localstack-eventbridge-scheduled-rules.md](docs/known_issues/localstack-eventbridge-scheduled-rules.md) for details.
+LocalStack now supports EventBridge scheduled rules. The tick Lambda will be automatically invoked every minute by the EventBridge rule created during deployment.
 
 ### 4. Production Deployment
 
@@ -242,6 +271,79 @@ If you update the manifest after initial installation, reinstall the app in Slac
 Each day's standup summaries are grouped under a daily thread in the channel.
 
 Users can reply `skip` to skip the standup.
+
+## Troubleshooting
+
+### LocalStack Common Issues
+
+#### Lambda Can't Connect to PostgreSQL
+**Problem**: Connection errors to database from Lambda
+
+**Solutions**:
+- Check PostgreSQL is running: `docker-compose ps`
+- Verify database URL uses correct host:
+  - From host machine: `localhost:5432`
+  - From Lambda (LocalStack): `host.docker.internal:5432`
+- Ensure DATABASE_URL environment variable is set correctly in Lambda configuration
+
+#### Terraform State Conflicts
+**Problem**: "Error acquiring state lock" or state inconsistencies
+
+**Solutions**:
+- Verify LocalStack is running: `docker-compose ps`
+- Check LocalStack is accessible on port 4566: `curl http://localhost:4566/_localstack/health`
+- Delete local state and re-init: `cd infra && rm -rf .terraform* && terragrunt init`
+
+#### Lambda Function Not Found
+**Problem**: 404 errors when invoking Lambda via Function URL
+
+**Solutions**:
+- Rebuild Lambda: `pnpm run build:lambda`
+- Redeploy to LocalStack: `./scripts/localstack-deploy.sh`
+- Check function exists: `awslocal lambda list-functions`
+- Verify Function URL: `awslocal lambda list-function-url-configs --function-name standup-bot`
+
+### Production (AWS) Issues
+
+#### Slack Events Not Received
+**Problem**: Slack app doesn't respond to commands or events
+
+**Solutions**:
+- Verify API Gateway URL is correctly configured in Slack app manifest
+- Check Slack app request URL: Should match API Gateway invoke URL
+- Review CloudWatch logs for Lambda function errors
+- Verify Lambda has internet access via NAT Gateway
+- Check security groups allow outbound HTTPS (443)
+
+#### Database Connection Errors
+**Problem**: Lambda can't connect to RDS
+
+**Solutions**:
+- Verify RDS is in same VPC as Lambda
+- Check Lambda security group allows outbound to RDS security group
+- Check RDS security group allows inbound from Lambda security group (port 5432)
+- Verify DATABASE_URL environment variable in Lambda
+- Check RDS is publicly accessible if debugging from local machine (not recommended for production)
+
+#### Lambda Timeout Errors
+**Problem**: Lambda exceeds timeout limit
+
+**Solutions**:
+- Review CloudWatch logs for slow operations
+- Check database query performance
+- Verify Slack API calls are not hanging
+- Increase Lambda timeout in `infra/modules/lambda/main.tf` if needed (current: 30s for slack handler, 60s for tick handler)
+- Consider optimizing database indexes or queries
+
+#### Terragrunt Apply Fails
+**Problem**: Infrastructure deployment errors
+
+**Solutions**:
+- Check AWS credentials are valid: `aws sts get-caller-identity`
+- Verify Terraform/Terragrunt versions match prerequisites
+- Review error message for missing permissions
+- Check AWS service quotas (VPCs, NAT Gateways, RDS instances)
+- Ensure bootstrap state backend was created: `cd infra/bootstrap && terragrunt apply`
 
 ## Testing
 
