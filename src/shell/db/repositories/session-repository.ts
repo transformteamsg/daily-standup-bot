@@ -1,6 +1,6 @@
 import { eq, and, inArray } from "drizzle-orm";
 import type { Db } from "@/shell/db/client";
-import { standupSessions, standupResponses } from "@/shell/db/schema/sqlite";
+import { standupSessions, standupResponses } from "@/shell/db/schema/postgres";
 import type { SessionRepository, ResponseRepository } from "@/core/ports";
 import type {
   StandupSession,
@@ -22,11 +22,10 @@ const ACTIVE_STATUSES = ["pending", "questions_delivered", "in_progress"];
 export function createSessionRepository(db: Db): SessionRepository {
   return {
     async findById(id: SessionId): Promise<StandupSession | null> {
-      const row = await db
+      const [row] = await db
         .select()
         .from(standupSessions)
-        .where(eq(standupSessions.id, id))
-        .get();
+        .where(eq(standupSessions.id, id));
       if (!row) return null;
       const responses = await loadResponses(db, mkSessionId(row.id));
       return toSession(row, responses);
@@ -44,8 +43,7 @@ export function createSessionRepository(db: Db): SessionRepository {
             eq(standupSessions.configId, configId),
             eq(standupSessions.date, date)
           )
-        )
-        .all();
+        );
       return Promise.all(
         rows.map(async (row) => {
           const responses = await loadResponses(db, mkSessionId(row.id));
@@ -66,8 +64,7 @@ export function createSessionRepository(db: Db): SessionRepository {
             eq(standupSessions.memberId, memberId),
             eq(standupSessions.date, date)
           )
-        )
-        .all();
+        );
       return Promise.all(
         rows.map(async (row) => {
           const responses = await loadResponses(db, mkSessionId(row.id));
@@ -79,7 +76,7 @@ export function createSessionRepository(db: Db): SessionRepository {
     async findActiveByMember(
       memberId: MemberId
     ): Promise<StandupSession | null> {
-      const row = await db
+      const [row] = await db
         .select()
         .from(standupSessions)
         .where(
@@ -87,8 +84,7 @@ export function createSessionRepository(db: Db): SessionRepository {
             eq(standupSessions.memberId, memberId),
             inArray(standupSessions.status, ACTIVE_STATUSES)
           )
-        )
-        .get();
+        );
       if (!row) return null;
       const responses = await loadResponses(db, mkSessionId(row.id));
       return toSession(row, responses);
@@ -105,10 +101,9 @@ export function createSessionRepository(db: Db): SessionRepository {
             "questions_delivered",
             "in_progress",
           ])
-        )
-        .all();
+        );
 
-      // Filter in application code since SQLite date comparison is string-based
+      // Filter in application code since date comparison is string-based
       const expired = rows.filter(
         (r) => r.deliveredAt != null && r.deliveredAt <= beforeTime
       );
@@ -194,8 +189,7 @@ async function loadResponses(
   const rows = await db
     .select()
     .from(standupResponses)
-    .where(eq(standupResponses.sessionId, sessionId))
-    .all();
+    .where(eq(standupResponses.sessionId, sessionId));
   return rows.map((r) => ({
     id: ResponseId(r.id),
     sessionId: mkSessionId(r.sessionId),

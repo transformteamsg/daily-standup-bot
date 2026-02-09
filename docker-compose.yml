@@ -1,10 +1,25 @@
 services:
-  bot:
-    build: .
-    env_file: .env
+  localstack:
+    image: localstack/localstack:latest
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=lambda,apigateway,events,iam,sts,logs,s3,dynamodb,ec2
+      - LAMBDA_EXECUTOR=docker-reuse
+      - DEFAULT_REGION=ap-southeast-1
     volumes:
-      - bot-data:/app/data
-    restart: unless-stopped
+      - "/var/run/docker.sock:/var/run/docker.sock"
+
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: standup
+      POSTGRES_USER: standup
+      POSTGRES_PASSWORD: standup
+    volumes:
+      - pgdata:/var/lib/postgresql/data
 
 volumes:
-  bot-data:
+  pgdata:

@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import type { Db } from "@/shell/db/client";
-import { teams } from "@/shell/db/schema/sqlite";
+import { teams } from "@/shell/db/schema/postgres";
 import type { TeamRepository } from "@/core/ports";
 import type { Team } from "@/core/domain/standup";
 import { TeamId } from "@/core/domain/standup";
@@ -8,11 +8,10 @@ import { TeamId } from "@/core/domain/standup";
 export function createTeamRepository(db: Db): TeamRepository {
   return {
     async findBySlackTeamId(slackTeamId: string): Promise<Team | null> {
-      const row = await db
+      const [row] = await db
         .select()
         .from(teams)
-        .where(eq(teams.slackTeamId, slackTeamId))
-        .get();
+        .where(eq(teams.slackTeamId, slackTeamId));
       return row ? toTeam(row) : null;
     },
 

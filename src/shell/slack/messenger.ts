@@ -1,32 +1,32 @@
-import type { App } from "@slack/bolt";
+import type { WebClient } from "@slack/web-api";
 import type { Logger, Messenger } from "@/core/ports";
 
-export function createSlackMessenger(app: App, logger: Logger): Messenger {
+export function createSlackMessenger(client: WebClient, logger: Logger): Messenger {
   return {
     async sendDM(slackUserId: string, text: string): Promise<void> {
       // Open a DM channel, then send the message
-      const result = await app.client.conversations.open({
+      const result = await client.conversations.open({
         users: slackUserId,
       });
       const channelId = result.channel?.id;
       if (!channelId) {
         throw new Error(`Failed to open DM channel with user ${slackUserId}`);
       }
-      await app.client.chat.postMessage({
+      await client.chat.postMessage({
         channel: channelId,
         text,
       });
     },
 
     async postToChannel(channelId: string, text: string): Promise<void> {
-      await app.client.chat.postMessage({
+      await client.chat.postMessage({
         channel: channelId,
         text,
       });
     },
 
     async postToChannelWithTs(channelId: string, text: string): Promise<string> {
-      const result = await app.client.chat.postMessage({
+      const result = await client.chat.postMessage({
         channel: channelId,
         text,
       });
@@ -34,7 +34,7 @@ export function createSlackMessenger(app: App, logger: Logger): Messenger {
     },
 
     async postToThread(channelId: string, threadTs: string, text: string): Promise<void> {
-      await app.client.chat.postMessage({
+      await client.chat.postMessage({
         channel: channelId,
         text,
         thread_ts: threadTs,
@@ -43,7 +43,7 @@ export function createSlackMessenger(app: App, logger: Logger): Messenger {
 
     async validateChannel(channelId: string) {
       try {
-        const result = await app.client.conversations.info({ channel: channelId });
+        const result = await client.conversations.info({ channel: channelId });
         if (!result.ok || !result.channel) {
           return { ok: false as const, error: "Channel not found or bot cannot access it." };
         }

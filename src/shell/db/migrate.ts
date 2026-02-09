@@ -1,8 +1,8 @@
 import { sql } from "drizzle-orm";
 import type { Db } from "@/shell/db/client";
 
-export function runMigrations(db: Db) {
-  db.run(sql`
+export async function runMigrations(db: Db) {
+  await db.execute(sql`
     CREATE TABLE IF NOT EXISTS teams (
       id TEXT PRIMARY KEY,
       slack_team_id TEXT NOT NULL UNIQUE,
@@ -11,7 +11,7 @@ export function runMigrations(db: Db) {
     )
   `);
 
-  db.run(sql`
+  await db.execute(sql`
     CREATE TABLE IF NOT EXISTS members (
       id TEXT PRIMARY KEY,
       team_id TEXT NOT NULL REFERENCES teams(id),
@@ -22,7 +22,7 @@ export function runMigrations(db: Db) {
     )
   `);
 
-  db.run(sql`
+  await db.execute(sql`
     CREATE TABLE IF NOT EXISTS standup_configs (
       id TEXT PRIMARY KEY,
       team_id TEXT NOT NULL REFERENCES teams(id),
@@ -30,12 +30,12 @@ export function runMigrations(db: Db) {
       channel_id TEXT NOT NULL,
       schedule_json TEXT,
       timeout_minutes INTEGER NOT NULL DEFAULT 60,
-      active INTEGER NOT NULL DEFAULT 0,
+      active BOOLEAN NOT NULL DEFAULT FALSE,
       created_at TEXT NOT NULL
     )
   `);
 
-  db.run(sql`
+  await db.execute(sql`
     CREATE TABLE IF NOT EXISTS standup_questions (
       id TEXT PRIMARY KEY,
       config_id TEXT NOT NULL REFERENCES standup_configs(id) ON DELETE CASCADE,
@@ -44,7 +44,7 @@ export function runMigrations(db: Db) {
     )
   `);
 
-  db.run(sql`
+  await db.execute(sql`
     CREATE TABLE IF NOT EXISTS config_members (
       config_id TEXT NOT NULL REFERENCES standup_configs(id) ON DELETE CASCADE,
       member_id TEXT NOT NULL REFERENCES members(id),
@@ -52,7 +52,7 @@ export function runMigrations(db: Db) {
     )
   `);
 
-  db.run(sql`
+  await db.execute(sql`
     CREATE TABLE IF NOT EXISTS standup_sessions (
       id TEXT PRIMARY KEY,
       config_id TEXT NOT NULL REFERENCES standup_configs(id),
@@ -68,7 +68,7 @@ export function runMigrations(db: Db) {
     )
   `);
 
-  db.run(sql`
+  await db.execute(sql`
     CREATE TABLE IF NOT EXISTS standup_responses (
       id TEXT PRIMARY KEY,
       session_id TEXT NOT NULL REFERENCES standup_sessions(id) ON DELETE CASCADE,
@@ -79,7 +79,7 @@ export function runMigrations(db: Db) {
     )
   `);
 
-  db.run(sql`
+  await db.execute(sql`
     CREATE TABLE IF NOT EXISTS admins (
       id TEXT PRIMARY KEY,
       team_id TEXT NOT NULL REFERENCES teams(id),
@@ -89,7 +89,7 @@ export function runMigrations(db: Db) {
     )
   `);
 
-  db.run(sql`
+  await db.execute(sql`
     CREATE TABLE IF NOT EXISTS daily_threads (
       id TEXT PRIMARY KEY,
       config_id TEXT NOT NULL REFERENCES standup_configs(id) ON DELETE CASCADE,
@@ -101,7 +101,7 @@ export function runMigrations(db: Db) {
     )
   `);
 
-  db.run(sql`
+  await db.execute(sql`
     CREATE TABLE IF NOT EXISTS report_subscriptions (
       config_id TEXT NOT NULL REFERENCES standup_configs(id) ON DELETE CASCADE,
       subscriber_slack_user_id TEXT NOT NULL,

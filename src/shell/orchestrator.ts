@@ -605,6 +605,8 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
       const existingMemberIds = new Set(existingSessions.map((s) => s.memberId as string));
       const needsStandup = getMembersNeedingStandup(allMembers, existingMemberIds);
 
+      logger.info(`${needsStandup.length} members to DM`);
+
       for (let m of needsStandup) {
         try {
           // Resolve display name if it still equals the raw Slack user ID
@@ -705,9 +707,12 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
     async tick() {
       const now = clock.now();
       const activeConfigs = await configRepo.findAllActive();
+      logger.info("activeConfigs", { activeConfigs });
 
       for (const config of activeConfigs) {
         try {
+          logger.info(`config.schedule`, { config_schedule: config.schedule });
+          logger.info(`shouldTrigger(${config.schedule}, ${now})`, { shouldTrigger: shouldTrigger(config.schedule, now)});
           if (config.schedule && shouldTrigger(config.schedule, now)) {
             await this.triggerStandup(config.id);
           }

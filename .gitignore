@@ -7,3 +7,16 @@ dist/
 coverage/
 drizzle/meta/
 .env.*
+
+# Terraform / Terragrunt
+infra/**/.terraform/
+infra/**/.terragrunt-cache/
+infra/**/backend.tf
+infra/**/provider.tf
+*.tfstate
+*.tfstate.backup
+*.tfplan
+
+# LocalStack
+.localstack/
+volume/

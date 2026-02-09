@@ -1,6 +1,6 @@
 import { eq, and } from "drizzle-orm";
 import type { Db } from "@/shell/db/client";
-import { members } from "@/shell/db/schema/sqlite";
+import { members } from "@/shell/db/schema/postgres";
 import type { MemberRepository } from "@/core/ports";
 import type { Member, TeamId, MemberId } from "@/core/domain/standup";
 import { MemberId as mkMemberId, TeamId as mkTeamId } from "@/core/domain/standup";
@@ -11,31 +11,28 @@ export function createMemberRepository(db: Db): MemberRepository {
       teamId: TeamId,
       slackUserId: string
     ): Promise<Member | null> {
-      const row = await db
+      const [row] = await db
         .select()
         .from(members)
         .where(
           and(eq(members.teamId, teamId), eq(members.slackUserId, slackUserId))
-        )
-        .get();
+        );
       return row ? toMember(row) : null;
     },
 
     async findBySlackUserIdGlobal(slackUserId: string): Promise<Member | null> {
-      const row = await db
+      const [row] = await db
         .select()
         .from(members)
-        .where(eq(members.slackUserId, slackUserId))
-        .get();
+        .where(eq(members.slackUserId, slackUserId));
       return row ? toMember(row) : null;
     },
 
     async findById(id: MemberId): Promise<Member | null> {
-      const row = await db
+      const [row] = await db
         .select()
         .from(members)
-        .where(eq(members.id, id))
-        .get();
+        .where(eq(members.id, id));
       return row ? toMember(row) : null;
     },
 
